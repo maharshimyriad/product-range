@@ -184,6 +184,9 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_simple_fields() {
+			$enabled = get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_ENABLED, true );
+			$enabled = 'yes' === $enabled ? 'yes' : 'no';
+
 			echo '<div class="options_group wc-product-range-fields show_if_simple hide_if_variable hide_if_grouped hide_if_external">';
 			woocommerce_wp_checkbox(
 				array(
@@ -191,7 +194,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 					'label'         => __( 'Enable range fields', 'wc-product-range-fields' ),
 					'description'   => __( 'Show typed range rows for this simple product.', 'wc-product-range-fields' ),
 					'desc_tip'      => true,
-					'value'         => get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_ENABLED, true ),
+					'value'         => $enabled,
 					'wrapper_class' => 'range-toggle-wrapper show_if_simple hide_if_variable hide_if_grouped hide_if_external wc-product-range-fields__checkbox',
 				)
 			);
@@ -232,6 +235,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 */
 		public function render_variation_fields( $loop, $variation_data, $variation ) {
 			$enabled = get_post_meta( $variation->ID, WC_Product_Range_Fields::META_ENABLED, true );
+			$enabled = 'yes' === $enabled ? 'yes' : 'no';
 
 			echo '<div class="form-row form-row-full wc-product-range-fields wc-product-range-fields__section">';
 			echo '<strong class="wc-product-range-fields__heading">' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</strong>';
