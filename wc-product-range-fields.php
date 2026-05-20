@@ -3,7 +3,7 @@
  * Plugin Name: WC Product Range Fields
  * Description: Adds min range, max range, and a visibility toggle to simple products and each product variation.
  * Version: 1.0.0
- * Author: Codex
+ * Author: Myriadsolutionz
  * Requires Plugins: woocommerce
  * Text Domain: wc-product-range-fields
  *
