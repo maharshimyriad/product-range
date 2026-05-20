@@ -65,6 +65,43 @@ jQuery(function($) {
 				'<input type="hidden" name="f_name" value="Range value">' +
 				'<input type="hidden" name="f_range_value_filter" value="1">' +
 				'<div class="row-settings-block">' +
+					'<div class="settings-block-label settings-w100 col-xs-4 col-sm-3">Title</div>' +
+					'<div class="settings-block-values settings-w100 col-xs-8 col-sm-9">' +
+						'<div class="settings-value settings-w100">' +
+							'<input type="text" name="f_title" value="Range value" class="woobewoo-flat-input">' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+				'<div class="row-settings-block">' +
+					'<div class="settings-block-label settings-w100 col-xs-4 col-sm-3">Description</div>' +
+					'<div class="settings-block-values settings-w100 col-xs-8 col-sm-9">' +
+						'<div class="settings-value settings-w100">' +
+							'<input type="text" name="f_description" value="" class="woobewoo-flat-input" placeholder="Description">' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+				'<div class="row-settings-block">' +
+					'<div class="settings-block-label settings-w100 col-xs-4 col-sm-3">Show title label</div>' +
+					'<div class="settings-block-values settings-w100 col-xs-8 col-sm-9">' +
+						'<div class="settings-value settings-w100">' +
+							'<div class="settings-value-label woobewoo-width60">desktop</div>' +
+							'<select name="f_enable_title" class="woobewoo-flat-input">' +
+								'<option value="no">No</option>' +
+								'<option value="yes_close">Yes, show as close</option>' +
+								'<option value="yes_open" selected>Yes, show as opened</option>' +
+							'</select>' +
+						'</div>' +
+						'<div class="settings-value settings-w100">' +
+							'<div class="settings-value-label woobewoo-width60">mobile</div>' +
+							'<select name="f_enable_title_mobile" class="woobewoo-flat-input">' +
+								'<option value="no">No</option>' +
+								'<option value="yes_close">Yes, show as close</option>' +
+								'<option value="yes_open" selected>Yes, show as opened</option>' +
+							'</select>' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+				'<div class="row-settings-block">' +
 					'<div class="settings-block-label settings-w100 col-xs-4 col-sm-3">Range filter</div>' +
 					'<div class="settings-block-values settings-w100 col-xs-8 col-sm-9">' +
 						'<div class="settings-value settings-w100">' +

@@ -103,6 +103,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
 				$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
 				$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
+				$show_title  = ! empty( $range_filter['settings']['f_enable_title'] ) ? $range_filter['settings']['f_enable_title'] : 'yes_open';
+				$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
+				$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
+				$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
 
 				$html .=
 					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
@@ -111,15 +115,19 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
 						' data-query-logic="and"' .
 						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
-						'>' .
-						'<div class="wpfFilterTitle">' . esc_html( $title ) . '</div>';
+						'>';
+
+				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
+					$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
+					$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
+				}
 
 				if ( '' !== $description ) {
 					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
 				}
 
 				$html .=
-						'<div class="wpfFilterContent">' .
+						'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
 							'<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input"' .
 								' value="' . esc_attr( $current_value ) . '"' .
 								' placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '"' .
