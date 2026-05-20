@@ -236,38 +236,6 @@ jQuery(function($) {
 		ensureRangeValueFilterTemplate();
 	}
 
-	function positionPreviewRangeFilters() {
-		$('.wc-product-range-filter').each(function() {
-			var $container = $(this).parent(),
-				$rangeFilters = $container.children('.wc-product-range-filter').sort(function(a, b) {
-					return (parseInt($(a).attr('data-range-order'), 10) || 0) - (parseInt($(b).attr('data-range-order'), 10) || 0);
-				}),
-				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
-
-			$rangeFilters.each(function() {
-				var $filter = $(this),
-					targetIndex = parseInt($filter.attr('data-range-order'), 10) || 0,
-					$otherWrappers = $container.children('.wpfFilterWrapper').not($filter);
-
-				if (!$otherWrappers.length || targetIndex <= 0) {
-					$filter.prependTo($container);
-					return;
-				}
-
-				if (targetIndex >= $otherWrappers.length) {
-					if ($buttonBlock.length) {
-						$filter.insertBefore($buttonBlock);
-					} else {
-						$filter.appendTo($container);
-					}
-					return;
-				}
-
-				$filter.insertBefore($otherWrappers.eq(targetIndex));
-			});
-		});
-	}
-
 	function getExistingAttributeFilters() {
 		var existingAttributes = {};
 
@@ -416,7 +384,6 @@ jQuery(function($) {
 		if (isFilterEditorReady()) {
 			initRangeValueFilterAdmin();
 			initAttributePicker();
-			positionPreviewRangeFilters();
 			return;
 		}
 
@@ -434,6 +401,5 @@ jQuery(function($) {
 	});
 	$(document).ajaxComplete(function() {
 		initAttributePickerWhenReady();
-		positionPreviewRangeFilters();
 	});
 });
