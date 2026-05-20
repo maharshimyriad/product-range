@@ -316,7 +316,18 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$has_legacy = (bool) $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value <> '' LIMIT 1",
+					"
+					SELECT min_meta.post_id
+					FROM {$wpdb->postmeta} min_meta
+					INNER JOIN {$wpdb->postmeta} enabled_meta
+						ON enabled_meta.post_id = min_meta.post_id
+						AND enabled_meta.meta_key = %s
+						AND enabled_meta.meta_value = 'yes'
+					WHERE min_meta.meta_key = %s
+						AND min_meta.meta_value <> ''
+					LIMIT 1
+					",
+					WC_Product_Range_Fields::META_ENABLED,
 					WC_Product_Range_Fields::META_MIN
 				)
 			);
@@ -378,6 +389,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 						'legacy_min'   => '',
 						'legacy_max'   => '',
 						'has_repeater' => false,
+						'enabled'      => 'no',
 					);
 				}
 
@@ -388,6 +400,25 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 					$entities[ $post_id ]['legacy_min'] = wc_format_decimal( (string) $row['meta_value'] );
 				} elseif ( WC_Product_Range_Fields::META_MAX === $row['meta_key'] ) {
 					$entities[ $post_id ]['legacy_max'] = wc_format_decimal( (string) $row['meta_value'] );
+				}
+			}
+
+			$enabled_rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"
+					SELECT post_id, meta_value
+					FROM {$wpdb->postmeta}
+					WHERE meta_key = %s
+					",
+					WC_Product_Range_Fields::META_ENABLED
+				),
+				ARRAY_A
+			);
+
+			foreach ( $enabled_rows as $enabled_row ) {
+				$post_id = (int) $enabled_row['post_id'];
+				if ( isset( $entities[ $post_id ] ) ) {
+					$entities[ $post_id ]['enabled'] = 'yes' === $enabled_row['meta_value'] ? 'yes' : 'no';
 				}
 			}
 
@@ -450,6 +481,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		private function entity_matches_filters( $entity, $values ) {
 			foreach ( $values as $type => $value ) {
 				$numeric = (float) $value;
+
+				if ( 'yes' !== $entity['enabled'] ) {
+					return false;
+				}
 
 				if ( 'legacy_range' === $type ) {
 					if ( $entity['has_repeater'] || ! $this->is_value_within_bounds( $numeric, $entity['legacy_min'], $entity['legacy_max'] ) ) {

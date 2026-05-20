@@ -2,6 +2,18 @@ jQuery(function($) {
 	var attributePickerInitAttempts = 0,
 		maxAttributePickerInitAttempts = 20;
 
+	function toggleRangeFields($scope) {
+		var prefix = wcProductRangeFields.enabledPrefix,
+			$checkbox = $scope.find('input[type="checkbox"][id^="' + prefix + '"]').first(),
+			$repeater = $scope.find('.wc-product-range-repeater').first();
+
+		if (!$checkbox.length || !$repeater.length) {
+			return;
+		}
+
+		$repeater.toggle($checkbox.is(':checked'));
+	}
+
 	function getTypeOptionsHtml(selectedValue) {
 		var options = '<option value="">' + wcProductRangeFields.strings.selectType + '</option>';
 
@@ -66,7 +78,7 @@ jQuery(function($) {
 			rowHtml =
 				'<div class="wc-product-range-repeater__row">' +
 					'<div class="wc-product-range-repeater__field wc-product-range-repeater__field--type">' +
-						'<label>Product type</label>' +
+						'<label>Range type</label>' +
 						'<select class="wc-product-range-repeater__type" data-range-field="type">' + getTypeOptionsHtml('') + '</select>' +
 					'</div>' +
 					'<div class="wc-product-range-repeater__field">' +
@@ -89,7 +101,8 @@ jQuery(function($) {
 
 	function initRepeaters(context) {
 		$(context).find('.wc-product-range-repeater').each(function() {
-			var $repeater = $(this);
+			var $repeater = $(this),
+				$scope = $repeater.closest('.options_group, .woocommerce_variation');
 
 			$repeater.find('.wc-product-range-repeater__type').attr('data-range-field', 'type');
 			$repeater.find('input[name$="[min]"]').attr('data-range-field', 'min');
@@ -97,6 +110,7 @@ jQuery(function($) {
 			reindexRepeater($repeater);
 			refreshTypeAvailability($repeater);
 			ensureMinimumRow($repeater);
+			toggleRangeFields($scope);
 		});
 	}
 
@@ -120,6 +134,10 @@ jQuery(function($) {
 
 	$(document).on('change', '.wc-product-range-repeater__type', function() {
 		refreshTypeAvailability($(this).closest('.wc-product-range-repeater'));
+	});
+
+	$(document).on('change', 'input[type="checkbox"][id^="' + wcProductRangeFields.enabledPrefix + '"]', function() {
+		toggleRangeFields($(this).closest('.options_group, .woocommerce_variation'));
 	});
 
 	$(document).on('woocommerce_variations_loaded woocommerce_variations_added', function() {

@@ -75,6 +75,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 				'wc-product-range-fields-admin',
 				'wcProductRangeFields',
 				array(
+					'enabledPrefix' => WC_Product_Range_Fields::META_ENABLED,
 					'rangeTypes'    => WC_Product_Range_Fields::get_range_types(),
 					'strings'       => array(
 						'selectType' => __( 'Select type', 'wc-product-range-fields' ),
@@ -184,8 +185,17 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 */
 		public function render_simple_fields() {
 			echo '<div class="options_group wc-product-range-fields show_if_simple hide_if_variable hide_if_grouped hide_if_external">';
-			echo '<p class="form-field"><label>' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</label>';
-			echo '<span class="description">' . esc_html__( 'Add one or more typed ranges for this product.', 'wc-product-range-fields' ) . '</span></p>';
+			woocommerce_wp_checkbox(
+				array(
+					'id'            => WC_Product_Range_Fields::META_ENABLED,
+					'label'         => __( 'Enable range fields', 'wc-product-range-fields' ),
+					'description'   => __( 'Show typed range rows for this simple product.', 'wc-product-range-fields' ),
+					'desc_tip'      => true,
+					'value'         => get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_ENABLED, true ),
+					'wrapper_class' => 'range-toggle-wrapper show_if_simple hide_if_variable hide_if_grouped hide_if_external wc-product-range-fields__checkbox',
+				)
+			);
+
 			$this->render_repeater(
 				WC_Product_Range_Fields::META_RANGES,
 				$this->get_admin_range_rows( get_the_ID() ),
@@ -207,6 +217,8 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 				return;
 			}
 
+			$enabled = isset( $_POST[ WC_Product_Range_Fields::META_ENABLED ] ) ? 'yes' : 'no';
+			update_post_meta( $product_id, WC_Product_Range_Fields::META_ENABLED, $enabled );
 			$this->save_range_rows( $product_id, $_POST[ WC_Product_Range_Fields::META_RANGES ] ?? array() );
 		}
 
@@ -219,8 +231,26 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_variation_fields( $loop, $variation_data, $variation ) {
+			$enabled = get_post_meta( $variation->ID, WC_Product_Range_Fields::META_ENABLED, true );
+
 			echo '<div class="form-row form-row-full wc-product-range-fields wc-product-range-fields__section">';
 			echo '<strong class="wc-product-range-fields__heading">' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</strong>';
+			echo '</div>';
+			echo '<div class="form-row form-row-full wc-product-range-fields wc-product-range-fields__checkbox">';
+
+			woocommerce_wp_checkbox(
+				array(
+					'id'            => WC_Product_Range_Fields::META_ENABLED . '[' . $loop . ']',
+					'name'          => WC_Product_Range_Fields::META_ENABLED . '[' . $loop . ']',
+					'label'         => __( 'Enable range fields', 'wc-product-range-fields' ),
+					'description'   => __( 'Show typed range rows for this variation.', 'wc-product-range-fields' ),
+					'desc_tip'      => true,
+					'value'         => $enabled,
+					'cbvalue'       => 'yes',
+					'wrapper_class' => 'form-row form-row-full',
+				)
+			);
+
 			echo '</div>';
 			$this->render_repeater(
 				WC_Product_Range_Fields::META_RANGES . '[' . $loop . ']',
@@ -237,7 +267,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function save_variation_fields( $variation_id, $loop ) {
+			$enabled_values = $_POST[ WC_Product_Range_Fields::META_ENABLED ] ?? array();
 			$range_values = $_POST[ WC_Product_Range_Fields::META_RANGES ] ?? array();
+			$enabled      = isset( $enabled_values[ $loop ] ) ? 'yes' : 'no';
+
+			update_post_meta( $variation_id, WC_Product_Range_Fields::META_ENABLED, $enabled );
 			$this->save_range_rows( $variation_id, $range_values[ $loop ] ?? array() );
 		}
 
@@ -254,6 +288,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 			$rows  = empty( $rows ) ? array( $this->get_empty_range_row() ) : array_values( $rows );
 
 			echo '<div class="wc-product-range-repeater ' . esc_attr( $wrapper_class ) . '" data-field-name="' . esc_attr( $field_name ) . '">';
+			echo '<div class="wc-product-range-repeater__intro">';
+			echo '<span class="wc-product-range-repeater__title">' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</span>';
+			echo '<span class="wc-product-range-repeater__description">' . esc_html__( 'Add one or more typed ranges for this product.', 'wc-product-range-fields' ) . '</span>';
+			echo '</div>';
 			echo '<div class="wc-product-range-repeater__rows">';
 
 			foreach ( $rows as $index => $row ) {
@@ -281,7 +319,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 
 			echo '<div class="wc-product-range-repeater__row">';
 			echo '<div class="wc-product-range-repeater__field wc-product-range-repeater__field--type">';
-			echo '<label>' . esc_html__( 'Product type', 'wc-product-range-fields' ) . '</label>';
+			echo '<label>' . esc_html__( 'Range type', 'wc-product-range-fields' ) . '</label>';
 			echo '<select name="' . esc_attr( $type_name ) . '" class="wc-product-range-repeater__type">';
 			echo '<option value="">' . esc_html__( 'Select type', 'wc-product-range-fields' ) . '</option>';
 
