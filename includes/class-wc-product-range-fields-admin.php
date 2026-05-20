@@ -41,6 +41,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 			add_action( 'woocommerce_process_product_meta', array( $this, 'save_simple_fields' ) );
 			add_action( 'woocommerce_variation_options', array( $this, 'render_variation_fields' ), 5, 3 );
 			add_action( 'woocommerce_save_product_variation', array( $this, 'save_variation_fields' ), 10, 2 );
+			add_action( 'admin_footer', array( $this, 'render_attribute_picker_dialog' ) );
 		}
 
 		/**
@@ -50,13 +51,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function enqueue_assets( $hook_suffix ) {
-			if ( ! in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true ) ) {
-				return;
-			}
-
-			$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-
-			if ( ! $screen || 'product' !== $screen->id ) {
+			if ( ! $this->should_enqueue_assets( $hook_suffix ) ) {
 				return;
 			}
 
@@ -70,7 +65,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 			wp_enqueue_script(
 				'wc-product-range-fields-admin',
 				plugin_dir_url( $this->plugin_file ) . 'assets/js/admin.js',
-				array( 'jquery' ),
+				array( 'jquery', 'jquery-ui-dialog' ),
 				WC_Product_Range_Fields::VERSION,
 				true
 			);
@@ -82,6 +77,78 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 					'enabledPrefix' => WC_Product_Range_Fields::META_ENABLED,
 				)
 			);
+		}
+
+		/**
+		 * Check whether assets should load on the current admin screen.
+		 *
+		 * @param string $hook_suffix Current admin page.
+		 * @return bool
+		 */
+		private function should_enqueue_assets( $hook_suffix ) {
+			if ( in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true ) ) {
+				$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+				return $screen && 'product' === $screen->id;
+			}
+
+			return $this->is_filter_admin_screen();
+		}
+
+		/**
+		 * Check whether the user is editing a Woo Product Filter form.
+		 *
+		 * @return bool
+		 */
+		private function is_filter_admin_screen() {
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+			$tab  = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+
+			return 'wpf-filters' === $page && false !== strpos( $tab, 'woofilters' );
+		}
+
+		/**
+		 * Render the moved bulk attribute picker on the filter admin page.
+		 *
+		 * @return void
+		 */
+		public function render_attribute_picker_dialog() {
+			if ( ! $this->is_filter_admin_screen() || ! class_exists( 'FrameWpf' ) ) {
+				return;
+			}
+
+			$module = FrameWpf::_()->getModule( 'woofilters' );
+			if ( ! $module ) {
+				return;
+			}
+
+			list( $attr_display ) = $module->getAttributesDisplay();
+			?>
+			<div class="wpf-product-range-attribute-picker">
+				<button style="margin-left:25px;" id="wpfAddAllAttributesButton" type="button" class="button button-small">
+					<span><?php esc_html_e( 'Choose attributes', 'woo-product-filter' ); ?></span>
+				</button>
+				<div id="wpfAttributesPickerDialog" title="<?php echo esc_attr__( 'Choose attributes', 'woo-product-filter' ); ?>" style="display:none;">
+					<div class="wpfAttributesPickerActions">
+						<button type="button" class="button button-small" data-action="select-all"><?php esc_html_e( 'Select all', 'woo-product-filter' ); ?></button>
+						<button type="button" class="button button-small" data-action="clear-all"><?php esc_html_e( 'Clear', 'woo-product-filter' ); ?></button>
+					</div>
+					<div class="wpfAttributesPickerList">
+						<?php foreach ( $attr_display as $attr_value => $attr_label ) : ?>
+							<?php if ( empty( $attr_value ) || '0' === (string) $attr_value ) : ?>
+								<?php continue; ?>
+							<?php endif; ?>
+							<div class="wpfAttributesPickerItem">
+								<label>
+									<input type="checkbox" value="<?php echo esc_attr( $attr_value ); ?>">
+									<span><?php echo esc_html( $attr_label ); ?></span>
+								</label>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</div>
+			<?php
 		}
 
 		/**

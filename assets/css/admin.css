@@ -41,3 +41,39 @@
 .woocommerce_variation .wc-product-range-fields .range-fields-group {
 	margin-top: 10px;
 }
+
+.wpf-product-range-attribute-picker {
+	display: none;
+}
+
+#wpfAttributesPickerDialog {
+	padding-top: 8px;
+}
+
+.wpfAttributesPickerActions {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.wpfAttributesPickerList {
+	max-height: 420px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	padding: 12px;
+	background: #fff;
+}
+
+.wpfAttributesPickerItem + .wpfAttributesPickerItem {
+	margin-top: 8px;
+}
+
+.wpfAttributesPickerItem label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.wpfAttributesPickerItem.wpfDisabled {
+	opacity: 0.5;
+}
