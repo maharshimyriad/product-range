@@ -91,27 +91,43 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return string
 		 */
 		public function append_range_filter_html( $html, $settings, $filter_id ) {
+			$filters = $this->get_saved_range_filters( $settings );
+			if ( empty( $filters ) ) {
+				return $html;
+			}
+
 			$current_value = $this->get_current_filter_value();
 			$is_active     = '' !== $current_value;
-			$uniq_id       = 'wpf-range-value-' . absint( $filter_id );
 
-			$html .=
-				'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
-					' data-filter-type="wpfSearchNumber"' .
-					' data-display-type="text"' .
-					' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
-					' data-query-logic="and"' .
-					' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
-					'>' .
-					'<div class="wpfFilterTitle">' . esc_html__( 'Range value', 'wc-product-range-fields' ) . '</div>' .
-					'<div class="wpfFilterContent">' .
-						'<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input"' .
-							' value="' . esc_attr( $current_value ) . '"' .
-							' placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '"' .
-							' aria-label="' . esc_attr__( 'Range value', 'wc-product-range-fields' ) . '"' .
+			foreach ( $filters as $range_filter ) {
+				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
+				$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
+				$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
+
+				$html .=
+					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
+						' data-filter-type="wpfSearchNumber"' .
+						' data-display-type="text"' .
+						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
+						' data-query-logic="and"' .
+						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
 						'>' .
-					'</div>' .
-				'</div>';
+						'<div class="wpfFilterTitle">' . esc_html( $title ) . '</div>';
+
+				if ( '' !== $description ) {
+					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
+				}
+
+				$html .=
+						'<div class="wpfFilterContent">' .
+							'<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input"' .
+								' value="' . esc_attr( $current_value ) . '"' .
+								' placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '"' .
+								' aria-label="' . esc_attr( $title ) . '"' .
+							'>' .
+						'</div>' .
+					'</div>';
+			}
 
 			return $html;
 		}
@@ -257,6 +273,34 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$value = wc_format_decimal( (string) $value );
 
 			return '' === $value || ! is_numeric( $value ) ? '' : $value;
+		}
+
+		/**
+		 * Extract saved range-filter blocks from WBW settings.
+		 *
+		 * @param array $settings WBW settings array.
+		 * @return array
+		 */
+		private function get_saved_range_filters( $settings ) {
+			if ( empty( $settings['filters']['order'] ) ) {
+				return array();
+			}
+
+			$filters = json_decode( $settings['filters']['order'], true );
+			if ( ! is_array( $filters ) ) {
+				return array();
+			}
+
+			return array_values(
+				array_filter(
+					$filters,
+					static function( $filter ) {
+						return isset( $filter['id'], $filter['settings']['f_range_value_filter'] )
+							&& 'wpfRangeValue' === $filter['id']
+							&& ! empty( $filter['settings']['f_enable'] );
+					}
+				)
+			);
 		}
 	}
 }

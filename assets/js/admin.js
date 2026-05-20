@@ -34,6 +34,57 @@ jQuery(function($) {
 		return !!($('#wpfFiltersEditForm').length && $('#wpfAddFilterButton').length && window.wpfAdminPage);
 	}
 
+	function ensureRangeValueFilterOption() {
+		var $select = $('#wpfChooseFilters');
+
+		if (!$select.length || $select.find('option[value="wpfRangeValue"]').length) {
+			return;
+		}
+
+		$('<option>', {
+			value: 'wpfRangeValue',
+			text: 'Range value',
+			'data-enabled': 1,
+			'data-unique': 1,
+			'data-filtername': '',
+			'data-group': '',
+			'data-available': 'add',
+			'data-unique-id': 'wpf_range_value_' + Date.now()
+		}).appendTo($select);
+	}
+
+	function ensureRangeValueFilterTemplate() {
+		var $templateHolder = $('.wpfOptionsTemplate');
+
+		if (!$templateHolder.length || $templateHolder.find('.wpfFilterOptions[data-filter="wpfRangeValue"]').length) {
+			return;
+		}
+
+		$templateHolder.append(
+			'<div class="wpfFilterOptions" data-filter="wpfRangeValue">' +
+				'<input type="hidden" name="f_name" value="Range value">' +
+				'<input type="hidden" name="f_range_value_filter" value="1">' +
+				'<div class="row-settings-block">' +
+					'<div class="settings-block-label settings-w100 col-xs-4 col-sm-3">Range filter</div>' +
+					'<div class="settings-block-values settings-w100 col-xs-8 col-sm-9">' +
+						'<div class="settings-value settings-w100">' +
+							'<p>This filter matches products where the entered number falls between the saved min and max range.</p>' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+			'</div>'
+		);
+	}
+
+	function initRangeValueFilterAdmin() {
+		if (!isFilterEditorReady()) {
+			return;
+		}
+
+		ensureRangeValueFilterOption();
+		ensureRangeValueFilterTemplate();
+	}
+
 	function getExistingAttributeFilters() {
 		var existingAttributes = {};
 
@@ -169,6 +220,7 @@ jQuery(function($) {
 
 	function initAttributePickerWhenReady() {
 		if (isFilterEditorReady()) {
+			initRangeValueFilterAdmin();
 			initAttributePicker();
 			return;
 		}
