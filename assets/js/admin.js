@@ -2,6 +2,21 @@ jQuery(function($) {
 	var attributePickerInitAttempts = 0,
 		maxAttributePickerInitAttempts = 20;
 
+	function findRangeFilterContainer($filter) {
+		var $ancestors = $filter.parents();
+
+		for (var i = 0; i < $ancestors.length; i++) {
+			var $container = $($ancestors[i]),
+				$buttons = $container.find('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap');
+
+			if ($buttons.length && $buttons.first().find($filter).length === 0) {
+				return $container;
+			}
+		}
+
+		return $filter.parent();
+	}
+
 	function toggleRangeFields($scope) {
 		var prefix = wcProductRangeFields.enabledPrefix,
 			$checkbox = $scope.find('input[type="checkbox"][id^="' + prefix + '"]').first(),
@@ -245,15 +260,17 @@ jQuery(function($) {
 				orderIndex = 0;
 			}
 
-			var $container = $filter.parent(),
-				$allItems = $container.children(),
-				$buttonBlock = $allItems.filter('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first(),
-				$wrappers = $allItems.filter('.wpfFilterWrapper').not($filter);
+			var $container = findRangeFilterContainer($filter),
+				$buttonBlock = $container.find('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first(),
+				$wrappers = $container.find('.wpfFilterWrapper').filter(function() {
+					return $(this).closest($container).length;
+				}).not($filter);
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
+			}
 
 			if (!$wrappers.length) {
-				if ($buttonBlock.length) {
-					$filter.insertBefore($buttonBlock);
-				}
 				return;
 			}
 
@@ -263,15 +280,36 @@ jQuery(function($) {
 			}
 
 			if (orderIndex >= $wrappers.length) {
+				$filter.insertAfter($wrappers.last());
 				if ($buttonBlock.length) {
 					$filter.insertBefore($buttonBlock);
-				} else {
-					$filter.insertAfter($wrappers.last());
 				}
 				return;
 			}
 
-			$filter.insertAfter($wrappers.eq(orderIndex - 1));
+			$filter.insertAfter($wrappers.eq(Math.max(0, orderIndex - 1)));
+			if ($buttonBlock.length && $filter.nextAll().filter($buttonBlock).length) {
+				return;
+			}
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
+			}
+		});
+	}
+
+	function observePreviewRangeFilters() {
+		if (!window.MutationObserver || window._wcProductRangePreviewObserver) {
+			return;
+		}
+
+		window._wcProductRangePreviewObserver = new MutationObserver(function() {
+			positionPreviewRangeFilters();
+		});
+
+		window._wcProductRangePreviewObserver.observe(document.body, {
+			childList: true,
+			subtree: true
 		});
 	}
 
@@ -436,6 +474,7 @@ jQuery(function($) {
 	}
 
 	initAttributePickerWhenReady();
+	observePreviewRangeFilters();
 	$(document).on('click', '.wpfFiltersBlock .wpfDelete', function() {
 		setTimeout(initAttributePickerWhenReady, 0);
 	});
