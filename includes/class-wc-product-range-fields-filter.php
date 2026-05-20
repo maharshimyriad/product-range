@@ -119,7 +119,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 						' data-display-type="text"' .
 						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
 						' data-query-logic="and"' .
-						' data-range-order="' . esc_attr( isset( $range_filter['order_index'] ) ? (int) $range_filter['order_index'] : 0 ) . '"' .
 						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
 						'>';
 
@@ -132,9 +131,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
 				}
 
-				$html .= '<div class="wpfFilterContent' . esc_attr( $content_css ) . '">';
-				$html .= $this->get_range_inputs_html( $filter_types, $current_values, $title );
-				$html .= '</div></div>';
+				$html .=
+						'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
+							$this->get_range_inputs_html( $filter_types, $current_values, $title ) .
+						'</div>' .
+					'</div>';
 			}
 
 			return $html;
@@ -513,20 +514,16 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				return array();
 			}
 
-			$range_filters = array();
-
-			foreach ( $filters as $index => $filter ) {
-				if (
-					isset( $filter['id'], $filter['settings']['f_range_value_filter'] )
-					&& 'wpfRangeValue' === $filter['id']
-					&& ! empty( $filter['settings']['f_enable'] )
-				) {
-					$filter['order_index'] = (int) $index;
-					$range_filters[]       = $filter;
-				}
-			}
-
-			return $range_filters;
+			return array_values(
+				array_filter(
+					$filters,
+					static function( $filter ) {
+						return isset( $filter['id'], $filter['settings']['f_range_value_filter'] )
+							&& 'wpfRangeValue' === $filter['id']
+							&& ! empty( $filter['settings']['f_enable'] );
+					}
+				)
+			);
 		}
 	}
 }
