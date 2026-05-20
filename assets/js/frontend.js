@@ -80,6 +80,45 @@ jQuery(function($) {
 		};
 	}
 
+	function positionRangeFilters(context) {
+		$(context).find('.wc-product-range-filter').each(function() {
+			var $filter = $(this),
+				orderIndex = parseInt($filter.attr('data-range-order'), 10);
+
+			if (isNaN(orderIndex)) {
+				orderIndex = 0;
+			}
+
+			var $container = $filter.parent(),
+				$allItems = $container.children(),
+				$buttonBlock = $allItems.filter('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first(),
+				$wrappers = $allItems.filter('.wpfFilterWrapper').not($filter);
+
+			if (!$wrappers.length) {
+				if ($buttonBlock.length) {
+					$filter.insertBefore($buttonBlock);
+				}
+				return;
+			}
+
+			if (orderIndex <= 0) {
+				$filter.insertBefore($wrappers.first());
+				return;
+			}
+
+			if (orderIndex >= $wrappers.length) {
+				if ($buttonBlock.length) {
+					$filter.insertBefore($buttonBlock);
+				} else {
+					$filter.insertAfter($wrappers.last());
+				}
+				return;
+			}
+
+			$filter.insertAfter($wrappers.eq(orderIndex - 1));
+		});
+	}
+
 	function bindRangeFilterEvents() {
 		$(document)
 			.off('input.wcProductRangeFilter', '.wc-product-range-filter input')
@@ -109,7 +148,9 @@ jQuery(function($) {
 
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
+	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
 		patchWpfRangeFilter();
+		positionRangeFilters(document);
 	});
 });

@@ -91,8 +91,8 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return string
 		 */
 		public function append_range_filter_html( $html, $settings, $filter_id ) {
-			$range_filter = $this->get_current_range_filter_settings( $settings, $filter_id );
-			if ( empty( $range_filter ) ) {
+			$filters = $this->get_saved_range_filters( $settings );
+			if ( empty( $filters ) ) {
 				return $html;
 			}
 
@@ -103,34 +103,39 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			$is_active = ! empty( $current_values );
-			$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
-			$title       = ! empty( $range_filter['f_title'] ) ? $range_filter['f_title'] : __( 'Range value', 'wc-product-range-fields' );
-			$description = ! empty( $range_filter['f_description'] ) ? $range_filter['f_description'] : '';
-			$show_title  = ! empty( $range_filter['f_enable_title'] ) ? $range_filter['f_enable_title'] : 'yes_open';
-			$show_mobile = ! empty( $range_filter['f_enable_title_mobile'] ) ? $range_filter['f_enable_title_mobile'] : $show_title;
-			$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
-			$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
 
-			$html  = '<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"';
-			$html .= ' data-filter-type="wpfSearchNumber"';
-			$html .= ' data-display-type="text"';
-			$html .= ' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"';
-			$html .= ' data-query-logic="and"';
-			$html .= ' data-uniq-id="' . esc_attr( $uniq_id ) . '"';
-			$html .= '>';
+			foreach ( $filters as $range_filter ) {
+				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
+				$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
+				$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
+				$show_title  = ! empty( $range_filter['settings']['f_enable_title'] ) ? $range_filter['settings']['f_enable_title'] : 'yes_open';
+				$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
+				$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
+				$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
 
-			if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
-				$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
-				$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
+				$html .=
+					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
+						' data-filter-type="wpfSearchNumber"' .
+						' data-display-type="text"' .
+						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
+						' data-query-logic="and"' .
+						' data-range-order="' . esc_attr( isset( $range_filter['order_index'] ) ? (int) $range_filter['order_index'] : 0 ) . '"' .
+						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
+						'>';
+
+				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
+					$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
+					$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
+				}
+
+				if ( '' !== $description ) {
+					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
+				}
+
+				$html .= '<div class="wpfFilterContent' . esc_attr( $content_css ) . '">';
+				$html .= $this->get_range_inputs_html( $filter_types, $current_values, $title );
+				$html .= '</div></div>';
 			}
-
-			if ( '' !== $description ) {
-				$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
-			}
-
-			$html .= '<div class="wpfFilterContent' . esc_attr( $content_css ) . '">';
-			$html .= $this->get_range_inputs_html( $filter_types, $current_values, $title );
-			$html .= '</div></div>';
 
 			return $html;
 		}
@@ -498,30 +503,30 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @param array $settings WBW settings array.
 		 * @return array
 		 */
-		private function get_current_range_filter_settings( $settings, $filter_id ) {
-			unset( $filter_id );
-
-			if ( ! is_array( $settings ) ) {
+		private function get_saved_range_filters( $settings ) {
+			if ( empty( $settings['filters']['order'] ) ) {
 				return array();
 			}
 
-			$normalized = $settings;
-
-			if ( ! empty( $settings['settings'] ) && is_array( $settings['settings'] ) ) {
-				$normalized = array_merge( $settings, $settings['settings'] );
-			}
-
-			$is_range_filter = (
-				! empty( $normalized['f_range_value_filter'] )
-				|| ( isset( $normalized['id'] ) && 'wpfRangeValue' === $normalized['id'] )
-				|| ( isset( $settings['id'] ) && 'wpfRangeValue' === $settings['id'] )
-			);
-
-			if ( ! $is_range_filter || empty( $normalized['f_enable'] ) ) {
+			$filters = json_decode( $settings['filters']['order'], true );
+			if ( ! is_array( $filters ) ) {
 				return array();
 			}
 
-			return $normalized;
+			$range_filters = array();
+
+			foreach ( $filters as $index => $filter ) {
+				if (
+					isset( $filter['id'], $filter['settings']['f_range_value_filter'] )
+					&& 'wpfRangeValue' === $filter['id']
+					&& ! empty( $filter['settings']['f_enable'] )
+				) {
+					$filter['order_index'] = (int) $index;
+					$range_filters[]       = $filter;
+				}
+			}
+
+			return $range_filters;
 		}
 	}
 }
