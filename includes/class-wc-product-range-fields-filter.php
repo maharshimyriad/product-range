@@ -285,7 +285,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		private function get_catalog_filter_types() {
 			global $wpdb;
 
-			$supported_types = $this->get_supported_filter_types();
+			$supported_types = WC_Product_Range_Fields::get_range_types();
 			$found_types     = array();
 			$meta_key        = WC_Product_Range_Fields::META_RANGES;
 
@@ -314,28 +314,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				}
 			}
 
-			$has_legacy = (bool) $wpdb->get_var(
-				$wpdb->prepare(
-					"
-					SELECT min_meta.post_id
-					FROM {$wpdb->postmeta} min_meta
-					INNER JOIN {$wpdb->postmeta} enabled_meta
-						ON enabled_meta.post_id = min_meta.post_id
-						AND enabled_meta.meta_key = %s
-						AND enabled_meta.meta_value = 'yes'
-					WHERE min_meta.meta_key = %s
-						AND min_meta.meta_value <> ''
-					LIMIT 1
-					",
-					WC_Product_Range_Fields::META_ENABLED,
-					WC_Product_Range_Fields::META_MIN
-				)
-			);
-
-			if ( $has_legacy ) {
-				$found_types['legacy_range'] = __( 'Range value', 'wc-product-range-fields' );
-			}
-
 			return $found_types;
 		}
 
@@ -345,9 +323,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return array
 		 */
 		private function get_supported_filter_types() {
-			return WC_Product_Range_Fields::get_range_types() + array(
-				'legacy_range' => __( 'Range value', 'wc-product-range-fields' ),
-			);
+			return WC_Product_Range_Fields::get_range_types();
 		}
 
 		/**
@@ -484,14 +460,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 				if ( 'yes' !== $entity['enabled'] ) {
 					return false;
-				}
-
-				if ( 'legacy_range' === $type ) {
-					if ( $entity['has_repeater'] || ! $this->is_value_within_bounds( $numeric, $entity['legacy_min'], $entity['legacy_max'] ) ) {
-						return false;
-					}
-
-					continue;
 				}
 
 				if ( empty( $entity['ranges'][ $type ] ) ) {

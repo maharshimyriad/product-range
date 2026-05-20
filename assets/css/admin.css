@@ -21,6 +21,8 @@
 
 .wc-product-range-fields__checkbox label {
 	font-weight: 600;
+	margin-top: 3px;
+	margin-left: 5px;
 }
 
 .wc-product-range-fields .checkbox {
