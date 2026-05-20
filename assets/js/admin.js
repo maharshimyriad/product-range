@@ -1,4 +1,7 @@
 jQuery(function($) {
+	var attributePickerInitAttempts = 0,
+		maxAttributePickerInitAttempts = 20;
+
 	function toggleRangeFields($scope) {
 		var prefix = wcProductRangeFields.enabledPrefix;
 		var $checkbox = $scope.find('input[type="checkbox"][id^="' + prefix + '"]');
@@ -164,8 +167,25 @@ jQuery(function($) {
 		});
 	}
 
-	initAttributePicker();
+	function initAttributePickerWhenReady() {
+		if (isFilterEditorReady()) {
+			initAttributePicker();
+			return;
+		}
+
+		if (attributePickerInitAttempts >= maxAttributePickerInitAttempts) {
+			return;
+		}
+
+		attributePickerInitAttempts++;
+		window.setTimeout(initAttributePickerWhenReady, 500);
+	}
+
+	initAttributePickerWhenReady();
 	$(document).on('click', '.wpfFiltersBlock .wpfDelete', function() {
-		setTimeout(initAttributePicker, 0);
+		setTimeout(initAttributePickerWhenReady, 0);
+	});
+	$(document).ajaxComplete(function() {
+		initAttributePickerWhenReady();
 	});
 });

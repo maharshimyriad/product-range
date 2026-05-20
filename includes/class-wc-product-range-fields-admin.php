@@ -37,6 +37,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 */
 		public function hooks() {
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+			add_action( 'admin_notices', array( $this, 'render_filter_admin_notice' ) );
 			add_action( 'woocommerce_product_options_general_product_data', array( $this, 'render_simple_fields' ) );
 			add_action( 'woocommerce_process_product_meta', array( $this, 'save_simple_fields' ) );
 			add_action( 'woocommerce_variation_options', array( $this, 'render_variation_fields' ), 5, 3 );
@@ -77,6 +78,29 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 					'enabledPrefix' => WC_Product_Range_Fields::META_ENABLED,
 				)
 			);
+		}
+
+		/**
+		 * Show Woo Product Filter setup instructions for the custom meta fields.
+		 *
+		 * @return void
+		 */
+		public function render_filter_admin_notice() {
+			if ( ! $this->is_filter_admin_screen() ) {
+				return;
+			}
+
+			?>
+			<div class="notice notice-info">
+				<p>
+					<?php esc_html_e( 'Range fields are saved as WooCommerce product meta keys.', 'wc-product-range-fields' ); ?>
+					<?php esc_html_e( 'In Woo Product Filter, add an Attribute filter, choose "Custom Meta Field", then use one of these keys:', 'wc-product-range-fields' ); ?>
+					<code><?php echo esc_html( WC_Product_Range_Fields::META_MIN ); ?></code>,
+					<code><?php echo esc_html( WC_Product_Range_Fields::META_MAX ); ?></code>,
+					<code><?php echo esc_html( WC_Product_Range_Fields::META_ENABLED ); ?></code>.
+				</p>
+			</div>
+			<?php
 		}
 
 		/**
