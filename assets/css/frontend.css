@@ -1,0 +1,9 @@
+.wc-product-range-filter .wpfFilterContent {
+	margin-top: 10px;
+}
+
+.wc-product-range-filter__input {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}

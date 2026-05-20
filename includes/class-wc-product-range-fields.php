@@ -82,6 +82,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields' ) ) {
 
 			$admin = new WC_Product_Range_Fields_Admin( $this->plugin_file );
 			$admin->hooks();
+
+			if ( class_exists( 'FrameWpf' ) ) {
+				require_once plugin_dir_path( $this->plugin_file ) . 'includes/class-wc-product-range-fields-filter.php';
+
+				$filter = new WC_Product_Range_Fields_Filter( $this->plugin_file );
+				$filter->hooks();
+			}
 		}
 
 		/**
