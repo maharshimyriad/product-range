@@ -184,8 +184,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_simple_fields() {
-			$enabled = get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_ENABLED, true );
-			$enabled = 'yes' === $enabled ? 'yes' : 'no';
+			$enabled = $this->get_enabled_value( get_the_ID() );
 
 			echo '<div class="options_group wc-product-range-fields show_if_simple hide_if_variable hide_if_grouped hide_if_external">';
 			woocommerce_wp_checkbox(
@@ -234,8 +233,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_variation_fields( $loop, $variation_data, $variation ) {
-			$enabled = get_post_meta( $variation->ID, WC_Product_Range_Fields::META_ENABLED, true );
-			$enabled = 'yes' === $enabled ? 'yes' : 'no';
+			$enabled = $this->get_enabled_value( $variation->ID );
 
 			echo '<div class="form-row form-row-full wc-product-range-fields wc-product-range-fields__section">';
 			echo '<strong class="wc-product-range-fields__heading">' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</strong>';
@@ -462,6 +460,33 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 				'min'  => '',
 				'max'  => '',
 			);
+		}
+
+		/**
+		 * Resolve the checkbox value from saved data.
+		 *
+		 * Defaults to disabled when no values exist, and enabled when
+		 * the product already has repeater or legacy range values.
+		 *
+		 * @param int $post_id Product or variation ID.
+		 * @return string
+		 */
+		private function get_enabled_value( $post_id ) {
+			$enabled = get_post_meta( $post_id, WC_Product_Range_Fields::META_ENABLED, true );
+			if ( 'yes' === $enabled ) {
+				return 'yes';
+			}
+
+			$rows = $this->get_admin_range_rows( $post_id );
+			if ( ! empty( $rows ) ) {
+				foreach ( $rows as $row ) {
+					if ( '' !== $row['min'] || '' !== $row['max'] ) {
+						return 'yes';
+					}
+				}
+			}
+
+			return 'no';
 		}
 
 		/**
