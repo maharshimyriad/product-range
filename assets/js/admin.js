@@ -2,32 +2,128 @@ jQuery(function($) {
 	var attributePickerInitAttempts = 0,
 		maxAttributePickerInitAttempts = 20;
 
-	function toggleRangeFields($scope) {
-		var prefix = wcProductRangeFields.enabledPrefix;
-		var $checkbox = $scope.find('input[type="checkbox"][id^="' + prefix + '"]');
-		var $fields = $scope.find('.range-fields-group');
+	function getTypeOptionsHtml(selectedValue) {
+		var options = '<option value="">' + wcProductRangeFields.strings.selectType + '</option>';
 
-		if (!$checkbox.length || !$fields.length) {
-			return;
-		}
+		$.each(wcProductRangeFields.rangeTypes, function(value, label) {
+			options += '<option value="' + value + '"' + (selectedValue === value ? ' selected' : '') + '>' + label + '</option>';
+		});
 
-		$fields.toggle($checkbox.is(':checked'));
+		return options;
 	}
 
-	function initRangeFields(context) {
-		$(context).find('.options_group, .woocommerce_variation').each(function() {
-			toggleRangeFields($(this));
+	function reindexRepeater($repeater) {
+		var fieldName = $repeater.data('field-name');
+
+		$repeater.find('.wc-product-range-repeater__row').each(function(index) {
+			$(this)
+				.find('select, input')
+				.each(function() {
+					var field = $(this).data('rangeField');
+					if (!field) {
+						return;
+					}
+
+					$(this).attr('name', fieldName + '[' + index + '][' + field + ']');
+				});
 		});
 	}
 
-	initRangeFields(document);
+	function refreshTypeAvailability($repeater) {
+		var selectedTypes = [];
 
-	$(document).on('change', 'input[type="checkbox"][id^="' + wcProductRangeFields.enabledPrefix + '"]', function() {
-		toggleRangeFields($(this).closest('.options_group, .woocommerce_variation'));
+		$repeater.find('.wc-product-range-repeater__type').each(function() {
+			var value = $(this).val();
+			if (value) {
+				selectedTypes.push(value);
+			}
+		});
+
+		$repeater.find('.wc-product-range-repeater__type').each(function() {
+			var currentValue = $(this).val();
+
+			$(this).find('option').each(function() {
+				var optionValue = $(this).attr('value');
+				if (!optionValue) {
+					return;
+				}
+
+				$(this).prop('disabled', optionValue !== currentValue && selectedTypes.indexOf(optionValue) !== -1);
+			});
+		});
+	}
+
+	function ensureMinimumRow($repeater) {
+		if ($repeater.find('.wc-product-range-repeater__row').length) {
+			return;
+		}
+
+		addRepeaterRow($repeater);
+	}
+
+	function addRepeaterRow($repeater) {
+		var $rows = $repeater.find('.wc-product-range-repeater__rows'),
+			rowHtml =
+				'<div class="wc-product-range-repeater__row">' +
+					'<div class="wc-product-range-repeater__field wc-product-range-repeater__field--type">' +
+						'<label>Product type</label>' +
+						'<select class="wc-product-range-repeater__type" data-range-field="type">' + getTypeOptionsHtml('') + '</select>' +
+					'</div>' +
+					'<div class="wc-product-range-repeater__field">' +
+						'<label>Min range</label>' +
+						'<input type="number" step="any" data-range-field="min">' +
+					'</div>' +
+					'<div class="wc-product-range-repeater__field">' +
+						'<label>Max range</label>' +
+						'<input type="number" step="any" data-range-field="max">' +
+					'</div>' +
+					'<div class="wc-product-range-repeater__actions">' +
+						'<button type="button" class="button-link-delete wc-product-range-repeater__remove">' + wcProductRangeFields.strings.remove + '</button>' +
+					'</div>' +
+				'</div>';
+
+		$rows.append(rowHtml);
+		reindexRepeater($repeater);
+		refreshTypeAvailability($repeater);
+	}
+
+	function initRepeaters(context) {
+		$(context).find('.wc-product-range-repeater').each(function() {
+			var $repeater = $(this);
+
+			$repeater.find('.wc-product-range-repeater__type').attr('data-range-field', 'type');
+			$repeater.find('input[name$="[min]"]').attr('data-range-field', 'min');
+			$repeater.find('input[name$="[max]"]').attr('data-range-field', 'max');
+			reindexRepeater($repeater);
+			refreshTypeAvailability($repeater);
+			ensureMinimumRow($repeater);
+		});
+	}
+
+	initRepeaters(document);
+
+	$(document).on('click', '.wc-product-range-repeater__add', function(e) {
+		e.preventDefault();
+		addRepeaterRow($(this).closest('.wc-product-range-repeater'));
+	});
+
+	$(document).on('click', '.wc-product-range-repeater__remove', function(e) {
+		var $repeater;
+
+		e.preventDefault();
+		$repeater = $(this).closest('.wc-product-range-repeater');
+		$(this).closest('.wc-product-range-repeater__row').remove();
+		reindexRepeater($repeater);
+		refreshTypeAvailability($repeater);
+		ensureMinimumRow($repeater);
+	});
+
+	$(document).on('change', '.wc-product-range-repeater__type', function() {
+		refreshTypeAvailability($(this).closest('.wc-product-range-repeater'));
 	});
 
 	$(document).on('woocommerce_variations_loaded woocommerce_variations_added', function() {
-		initRangeFields(document);
+		initRepeaters(document);
 	});
 
 	function isFilterEditorReady() {

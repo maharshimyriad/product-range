@@ -43,6 +43,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields' ) ) {
 		const META_MAX = '_max_range';
 
 		/**
+		 * Product meta key for repeater rows.
+		 *
+		 * @var string
+		 */
+		const META_RANGES = '_product_ranges';
+
+		/**
 		 * Plugin file path.
 		 *
 		 * @var string
@@ -98,6 +105,18 @@ if ( ! class_exists( 'WC_Product_Range_Fields' ) ) {
 		 */
 		public function woocommerce_missing_notice() {
 			echo '<div class="notice notice-error"><p>WC Product Range Fields requires WooCommerce to be active.</p></div>';
+		}
+
+		/**
+		 * Supported range types.
+		 *
+		 * @return array
+		 */
+		public static function get_range_types() {
+			return array(
+				'pipe_diameter' => __( 'Pipe Diameter', 'wc-product-range-fields' ),
+				'product_length' => __( 'Product Length', 'wc-product-range-fields' ),
+			);
 		}
 	}
 }

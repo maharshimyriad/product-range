@@ -2,6 +2,20 @@
 	margin-top: 10px;
 }
 
+.wc-product-range-filter__field {
+	display: block;
+}
+
+.wc-product-range-filter__field + .wc-product-range-filter__field {
+	margin-top: 12px;
+}
+
+.wc-product-range-filter__label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
 .wc-product-range-filter__input {
 	width: 100%;
 	max-width: 100%;

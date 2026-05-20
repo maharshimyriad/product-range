@@ -25,7 +25,7 @@ jQuery(function($) {
 				};
 			}
 
-			var value = $.trim($filter.find('input').val()),
+			var values = {},
 				optionsArray = {
 					backend: {},
 					frontend: {},
@@ -33,27 +33,43 @@ jQuery(function($) {
 					stats: []
 				};
 
-			if (!value.length) {
+			$filter.find('.wc-product-range-filter__input').each(function() {
+				var value = $.trim($(this).val()),
+					type = $(this).data('range-type');
+
+				if (!value.length || !type) {
+					return;
+				}
+
+				values[type] = value;
+			});
+
+			if ($.isEmptyObject(values)) {
 				return optionsArray;
 			}
 
-			optionsArray.backend.value = value;
-			optionsArray.frontend.value = value;
-			optionsArray.selected.list[0] = value;
-			optionsArray.stats = [value];
+			optionsArray.backend.value = values;
+			optionsArray.frontend.value = values;
+			optionsArray.selected.list[0] = values;
+			optionsArray.stats = $.map(values, function(item) {
+				return item;
+			});
 
 			return optionsArray;
 		};
 
 		wpf.changeUrlByFilterParamsPro = function(filterData, noWooPage, filterWrapper) {
 			if (filterData.id === 'wpfSearchNumber' && filterData.name === 'wpf_range_value') {
-				var value = filterData.settings && filterData.settings.value ? filterData.settings.value : '';
+				var value = filterData.settings && filterData.settings.value ? filterData.settings.value : {},
+					$wrapper = $(filterWrapper);
 
-				if (value.length) {
-					this.QStringWork('wpf_range_value', value, noWooPage, filterWrapper, 'change');
-				} else {
-					this.QStringWork('wpf_range_value', '', noWooPage, filterWrapper, 'remove');
-				}
+				$wrapper.find('.wc-product-range-filter__input').each($.proxy(function(index, input) {
+					var type = $(input).data('range-type'),
+						paramName = 'wpf_range_value[' + type + ']',
+						paramValue = value[type] ? value[type] : '';
+
+					this.QStringWork(paramName, paramValue, noWooPage, filterWrapper, paramValue ? 'change' : 'remove');
+				}, this));
 
 				return;
 			}
@@ -68,8 +84,17 @@ jQuery(function($) {
 		$(document)
 			.off('input.wcProductRangeFilter', '.wc-product-range-filter input')
 			.on('input.wcProductRangeFilter', '.wc-product-range-filter input', function() {
-				var $filter = $(this).closest('.wpfFilterWrapper');
-				$filter.toggleClass('wpfNotActive', !$.trim($(this).val()).length);
+				var $filter = $(this).closest('.wpfFilterWrapper'),
+					hasValue = false;
+
+				$filter.find('.wc-product-range-filter__input').each(function() {
+					if ($.trim($(this).val()).length) {
+						hasValue = true;
+						return false;
+					}
+				});
+
+				$filter.toggleClass('wpfNotActive', !hasValue);
 			});
 
 		$(document)

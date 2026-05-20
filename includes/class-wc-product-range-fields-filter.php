@@ -33,7 +33,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 *
 		 * @var string|null
 		 */
-		private static $current_filter_value = null;
+		private static $current_filter_values = null;
 
 		/**
 		 * Constructor.
@@ -53,7 +53,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 			add_filter( 'wpf_addHtmlAfterFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
 			add_filter( 'wpf_addCustomTaxQueryPro', array( $this, 'capture_range_filter_value' ), 10, 3 );
-			add_filter( 'posts_where', array( $this, 'filter_posts_where' ), 20, 2 );
+			add_action( 'pre_get_posts', array( $this, 'apply_range_filter_to_query' ) );
 		}
 
 		/**
@@ -96,8 +96,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				return $html;
 			}
 
-			$current_value = $this->get_current_filter_value();
-			$is_active     = '' !== $current_value;
+			$current_values = $this->get_current_filter_values();
+			$filter_types   = $this->get_catalog_filter_types();
+			if ( empty( $filter_types ) ) {
+				return $html;
+			}
+
+			$is_active = ! empty( $current_values );
 
 			foreach ( $filters as $range_filter ) {
 				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
@@ -128,11 +133,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 				$html .=
 						'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
-							'<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input"' .
-								' value="' . esc_attr( $current_value ) . '"' .
-								' placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '"' .
-								' aria-label="' . esc_attr( $title ) . '"' .
-							'>' .
+							$this->get_range_inputs_html( $filter_types, $current_values, $title ) .
 						'</div>' .
 					'</div>';
 			}
@@ -152,7 +153,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			unset( $mode );
 
 			if ( ! empty( $data[ self::FILTER_PARAM ] ) ) {
-				self::$current_filter_value = $this->sanitize_filter_value( $data[ self::FILTER_PARAM ] );
+				self::$current_filter_values = $this->sanitize_filter_values( $data[ self::FILTER_PARAM ] );
 			}
 
 			return $tax_query;
@@ -165,86 +166,42 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @param WP_Query $query Query object.
 		 * @return string
 		 */
-		public function filter_posts_where( $where, $query ) {
-			$value = $this->get_current_filter_value();
-			if ( '' === $value || ! $this->query_targets_products( $query ) ) {
-				return $where;
+		public function apply_range_filter_to_query( $query ) {
+			$values = $this->get_current_filter_values();
+			if ( empty( $values ) || ! $this->query_targets_products( $query ) || is_admin() ) {
+				return;
 			}
 
-			global $wpdb;
+			$matching_ids = $this->get_matching_product_ids( $values );
+			if ( empty( $matching_ids ) ) {
+				$query->set( 'post__in', array( 0 ) );
+				return;
+			}
 
-			$numeric = (float) $value;
+			$existing_post__in = $query->get( 'post__in' );
+			if ( ! empty( $existing_post__in ) && is_array( $existing_post__in ) ) {
+				$matching_ids = array_values( array_intersect( array_map( 'intval', $existing_post__in ), $matching_ids ) );
+			}
 
-			$where .= $wpdb->prepare(
-				"
-				AND (
-					EXISTS (
-						SELECT 1
-						FROM {$wpdb->postmeta} range_enabled
-						INNER JOIN {$wpdb->postmeta} range_min
-							ON range_min.post_id = range_enabled.post_id
-							AND range_min.meta_key = %s
-						INNER JOIN {$wpdb->postmeta} range_max
-							ON range_max.post_id = range_enabled.post_id
-							AND range_max.meta_key = %s
-						WHERE range_enabled.post_id = {$wpdb->posts}.ID
-							AND range_enabled.meta_key = %s
-							AND range_enabled.meta_value = 'yes'
-							AND CAST(range_min.meta_value AS DECIMAL(20,6)) <= %f
-							AND CAST(range_max.meta_value AS DECIMAL(20,6)) >= %f
-					)
-					OR EXISTS (
-						SELECT 1
-						FROM {$wpdb->posts} variations
-						INNER JOIN {$wpdb->postmeta} variation_enabled
-							ON variation_enabled.post_id = variations.ID
-							AND variation_enabled.meta_key = %s
-							AND variation_enabled.meta_value = 'yes'
-						INNER JOIN {$wpdb->postmeta} variation_min
-							ON variation_min.post_id = variations.ID
-							AND variation_min.meta_key = %s
-						INNER JOIN {$wpdb->postmeta} variation_max
-							ON variation_max.post_id = variations.ID
-							AND variation_max.meta_key = %s
-						WHERE variations.post_parent = {$wpdb->posts}.ID
-							AND variations.post_type = 'product_variation'
-							AND variations.post_status = 'publish'
-							AND CAST(variation_min.meta_value AS DECIMAL(20,6)) <= %f
-							AND CAST(variation_max.meta_value AS DECIMAL(20,6)) >= %f
-					)
-				)
-				",
-				WC_Product_Range_Fields::META_MIN,
-				WC_Product_Range_Fields::META_MAX,
-				WC_Product_Range_Fields::META_ENABLED,
-				$numeric,
-				$numeric,
-				WC_Product_Range_Fields::META_ENABLED,
-				WC_Product_Range_Fields::META_MIN,
-				WC_Product_Range_Fields::META_MAX,
-				$numeric,
-				$numeric
-			);
-
-			return $where;
+			$query->set( 'post__in', empty( $matching_ids ) ? array( 0 ) : $matching_ids );
 		}
 
 		/**
-		 * Resolve the current numeric filter value.
+		 * Resolve the current numeric filter values.
 		 *
-		 * @return string
+		 * @return array
 		 */
-		private function get_current_filter_value() {
-			if ( null !== self::$current_filter_value ) {
-				return self::$current_filter_value;
+		private function get_current_filter_values() {
+			if ( null !== self::$current_filter_values ) {
+				return self::$current_filter_values;
 			}
 
 			if ( isset( $_GET[ self::FILTER_PARAM ] ) ) {
-				self::$current_filter_value = $this->sanitize_filter_value( wp_unslash( $_GET[ self::FILTER_PARAM ] ) );
-				return self::$current_filter_value;
+				self::$current_filter_values = $this->sanitize_filter_values( wp_unslash( $_GET[ self::FILTER_PARAM ] ) );
+				return self::$current_filter_values;
 			}
 
-			return '';
+			return array();
 		}
 
 		/**
@@ -273,14 +230,269 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @param mixed $value Raw input.
 		 * @return string
 		 */
-		private function sanitize_filter_value( $value ) {
-			if ( is_array( $value ) ) {
-				$value = reset( $value );
+		private function sanitize_filter_values( $values ) {
+			if ( ! is_array( $values ) ) {
+				return array();
 			}
 
-			$value = wc_format_decimal( (string) $value );
+			$allowed = $this->get_supported_filter_types();
+			$output  = array();
 
-			return '' === $value || ! is_numeric( $value ) ? '' : $value;
+			foreach ( $values as $type => $value ) {
+				$type = sanitize_key( (string) $type );
+				if ( ! isset( $allowed[ $type ] ) ) {
+					continue;
+				}
+
+				$value = wc_format_decimal( (string) $value );
+				if ( '' === $value || ! is_numeric( $value ) ) {
+					continue;
+				}
+
+				$output[ $type ] = $value;
+			}
+
+			return $output;
+		}
+
+		/**
+		 * Render the typed inputs inside the filter block.
+		 *
+		 * @param array  $filter_types Discovered filter types.
+		 * @param array  $current_values Current request values.
+		 * @param string $title Filter title.
+		 * @return string
+		 */
+		private function get_range_inputs_html( $filter_types, $current_values, $title ) {
+			$html = '';
+
+			foreach ( $filter_types as $type => $label ) {
+				$value = isset( $current_values[ $type ] ) ? $current_values[ $type ] : '';
+				$html .= '<label class="wc-product-range-filter__field">';
+				$html .= '<span class="wc-product-range-filter__label">' . esc_html( $label ) . '</span>';
+				$html .= '<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input" data-range-type="' . esc_attr( $type ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '" aria-label="' . esc_attr( $title . ' ' . $label ) . '">';
+				$html .= '</label>';
+			}
+
+			return $html;
+		}
+
+		/**
+		 * Discover filter types that exist in the catalog.
+		 *
+		 * @return array
+		 */
+		private function get_catalog_filter_types() {
+			global $wpdb;
+
+			$supported_types = $this->get_supported_filter_types();
+			$found_types     = array();
+			$meta_key        = WC_Product_Range_Fields::META_RANGES;
+
+			$matches = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
+					$meta_key
+				)
+			);
+
+			foreach ( $matches as $meta_value ) {
+				$rows = maybe_unserialize( $meta_value );
+				if ( ! is_array( $rows ) ) {
+					continue;
+				}
+
+				foreach ( $rows as $row ) {
+					if ( empty( $row['type'] ) ) {
+						continue;
+					}
+
+					$type = sanitize_key( $row['type'] );
+					if ( isset( $supported_types[ $type ] ) ) {
+						$found_types[ $type ] = $supported_types[ $type ];
+					}
+				}
+			}
+
+			$has_legacy = (bool) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value <> '' LIMIT 1",
+					WC_Product_Range_Fields::META_MIN
+				)
+			);
+
+			if ( $has_legacy ) {
+				$found_types['legacy_range'] = __( 'Range value', 'wc-product-range-fields' );
+			}
+
+			return $found_types;
+		}
+
+		/**
+		 * Supported filter types, including legacy fallback.
+		 *
+		 * @return array
+		 */
+		private function get_supported_filter_types() {
+			return WC_Product_Range_Fields::get_range_types() + array(
+				'legacy_range' => __( 'Range value', 'wc-product-range-fields' ),
+			);
+		}
+
+		/**
+		 * Get matching product IDs for the current typed filters.
+		 *
+		 * @param array $values Typed numeric filters.
+		 * @return array
+		 */
+		private function get_matching_product_ids( $values ) {
+			global $wpdb;
+
+			$product_rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"
+					SELECT p.ID, p.post_parent, p.post_type, pm.meta_key, pm.meta_value
+					FROM {$wpdb->posts} p
+					INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+					WHERE p.post_type IN ('product', 'product_variation')
+						AND p.post_status = 'publish'
+						AND pm.meta_key IN (%s, %s, %s)
+					",
+					WC_Product_Range_Fields::META_RANGES,
+					WC_Product_Range_Fields::META_MIN,
+					WC_Product_Range_Fields::META_MAX
+				),
+				ARRAY_A
+			);
+
+			$entities = array();
+
+			foreach ( $product_rows as $row ) {
+				$post_id = (int) $row['ID'];
+
+				if ( ! isset( $entities[ $post_id ] ) ) {
+					$entities[ $post_id ] = array(
+						'post_type'    => $row['post_type'],
+						'post_parent'  => (int) $row['post_parent'],
+						'ranges'       => array(),
+						'legacy_min'   => '',
+						'legacy_max'   => '',
+						'has_repeater' => false,
+					);
+				}
+
+				if ( WC_Product_Range_Fields::META_RANGES === $row['meta_key'] ) {
+					$entities[ $post_id ]['ranges']       = $this->normalize_saved_rows( maybe_unserialize( $row['meta_value'] ) );
+					$entities[ $post_id ]['has_repeater'] = ! empty( $entities[ $post_id ]['ranges'] );
+				} elseif ( WC_Product_Range_Fields::META_MIN === $row['meta_key'] ) {
+					$entities[ $post_id ]['legacy_min'] = wc_format_decimal( (string) $row['meta_value'] );
+				} elseif ( WC_Product_Range_Fields::META_MAX === $row['meta_key'] ) {
+					$entities[ $post_id ]['legacy_max'] = wc_format_decimal( (string) $row['meta_value'] );
+				}
+			}
+
+			$matched_products = array();
+
+			foreach ( $entities as $post_id => $entity ) {
+				if ( ! $this->entity_matches_filters( $entity, $values ) ) {
+					continue;
+				}
+
+				$matched_products[] = 'product_variation' === $entity['post_type'] ? $entity['post_parent'] : $post_id;
+			}
+
+			$matched_products = array_values( array_unique( array_filter( array_map( 'intval', $matched_products ) ) ) );
+			sort( $matched_products );
+
+			return $matched_products;
+		}
+
+		/**
+		 * Normalize stored repeater rows.
+		 *
+		 * @param mixed $rows Raw rows from meta.
+		 * @return array
+		 */
+		private function normalize_saved_rows( $rows ) {
+			if ( ! is_array( $rows ) ) {
+				return array();
+			}
+
+			$supported = WC_Product_Range_Fields::get_range_types();
+			$normalized = array();
+
+			foreach ( $rows as $row ) {
+				if ( ! is_array( $row ) || empty( $row['type'] ) ) {
+					continue;
+				}
+
+				$type = sanitize_key( (string) $row['type'] );
+				if ( ! isset( $supported[ $type ] ) ) {
+					continue;
+				}
+
+				$normalized[ $type ] = array(
+					'min' => isset( $row['min'] ) ? wc_format_decimal( (string) $row['min'] ) : '',
+					'max' => isset( $row['max'] ) ? wc_format_decimal( (string) $row['max'] ) : '',
+				);
+			}
+
+			return $normalized;
+		}
+
+		/**
+		 * Check whether one product or variation matches all typed filters.
+		 *
+		 * @param array $entity Product or variation range data.
+		 * @param array $values Submitted filter values.
+		 * @return bool
+		 */
+		private function entity_matches_filters( $entity, $values ) {
+			foreach ( $values as $type => $value ) {
+				$numeric = (float) $value;
+
+				if ( 'legacy_range' === $type ) {
+					if ( $entity['has_repeater'] || ! $this->is_value_within_bounds( $numeric, $entity['legacy_min'], $entity['legacy_max'] ) ) {
+						return false;
+					}
+
+					continue;
+				}
+
+				if ( empty( $entity['ranges'][ $type ] ) ) {
+					return false;
+				}
+
+				if ( ! $this->is_value_within_bounds( $numeric, $entity['ranges'][ $type ]['min'], $entity['ranges'][ $type ]['max'] ) ) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		/**
+		 * Check whether a numeric value fits the stored bounds.
+		 *
+		 * @param float  $numeric Input value.
+		 * @param string $min Minimum bound.
+		 * @param string $max Maximum bound.
+		 * @return bool
+		 */
+		private function is_value_within_bounds( $numeric, $min, $max ) {
+			if ( '' === $min && '' === $max ) {
+				return false;
+			}
+
+			if ( '' !== $min && $numeric < (float) $min ) {
+				return false;
+			}
+
+			if ( '' !== $max && $numeric > (float) $max ) {
+				return false;
+			}
+
+			return true;
 		}
 
 		/**
