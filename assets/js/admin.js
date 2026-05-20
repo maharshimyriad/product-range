@@ -137,7 +137,18 @@ jQuery(function($) {
 				return true;
 			}
 
-			window.wpfAdminPage.wpfAddFilter('wpfAttribute', false, { f_list: value, f_enable: 1, f_show_count: 1 }, { skipAttributeTermsLoad: true });
+			window.wpfAdminPage.wpfAddFilter(
+				'wpfAttribute',
+				false,
+				{
+					f_list: value,
+					f_enable: 1,
+					f_show_count: 1,
+					f_enable_title: 'yes_open',
+					f_enable_title_mobile: 'yes_open'
+				},
+				{ skipAttributeTermsLoad: true }
+			);
 			existingAttributes[value] = true;
 			added++;
 		});
