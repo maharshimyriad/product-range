@@ -168,6 +168,9 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 			$min     = get_post_meta( $variation->ID, WC_Product_Range_Fields::META_MIN, true );
 			$max     = get_post_meta( $variation->ID, WC_Product_Range_Fields::META_MAX, true );
 
+			echo '<div class="form-row form-row-full wc-product-range-fields wc-product-range-fields__section">';
+			echo '<strong class="wc-product-range-fields__heading">' . esc_html__( 'Range fields', 'wc-product-range-fields' ) . '</strong>';
+			echo '</div>';
 			echo '<div class="form-row form-row-full wc-product-range-fields range-toggle-wrapper">';
 
 			woocommerce_wp_checkbox(
@@ -179,7 +182,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 					'desc_tip'      => true,
 					'value'         => $enabled,
 					'cbvalue'       => 'yes',
-					'wrapper_class' => 'form-row form-row-full',
+					'wrapper_class' => 'form-row form-row-full wc-product-range-fields__checkbox',
 				)
 			);
 
