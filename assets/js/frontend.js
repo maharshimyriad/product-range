@@ -80,6 +80,22 @@ jQuery(function($) {
 		};
 	}
 
+	function moveRangeFiltersBeforeButtons(context) {
+		$(context).find('.wc-product-range-filter').each(function() {
+			var $filter = $(this),
+				$container = $filter.parent(),
+				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
+
+			if (!$buttonBlock.length) {
+				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
+			}
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
+			}
+		});
+	}
+
 	function bindRangeFilterEvents() {
 		$(document)
 			.off('input.wcProductRangeFilter', '.wc-product-range-filter input')
@@ -109,5 +125,9 @@ jQuery(function($) {
 
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
-	$(document).on('wpfAjaxSuccess', patchWpfRangeFilter);
+	moveRangeFiltersBeforeButtons(document);
+	$(document).on('wpfAjaxSuccess', function() {
+		patchWpfRangeFilter();
+		moveRangeFiltersBeforeButtons(document);
+	});
 });

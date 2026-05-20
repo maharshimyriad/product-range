@@ -236,6 +236,22 @@ jQuery(function($) {
 		ensureRangeValueFilterTemplate();
 	}
 
+	function movePreviewRangeFiltersBeforeButtons() {
+		$('.wc-product-range-filter').each(function() {
+			var $filter = $(this),
+				$container = $filter.parent(),
+				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
+
+			if (!$buttonBlock.length) {
+				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
+			}
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
+			}
+		});
+	}
+
 	function getExistingAttributeFilters() {
 		var existingAttributes = {};
 
@@ -384,6 +400,7 @@ jQuery(function($) {
 		if (isFilterEditorReady()) {
 			initRangeValueFilterAdmin();
 			initAttributePicker();
+			movePreviewRangeFiltersBeforeButtons();
 			return;
 		}
 
@@ -401,5 +418,6 @@ jQuery(function($) {
 	});
 	$(document).ajaxComplete(function() {
 		initAttributePickerWhenReady();
+		movePreviewRangeFiltersBeforeButtons();
 	});
 });

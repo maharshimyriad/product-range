@@ -2,11 +2,14 @@
 	margin-top: 10px;
 }
 
-.wc-product-range-filter__field {
-	display: block;
+label.wc-product-range-filter__field {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	width: 100%;
 }
 
-.wc-product-range-filter__field + .wc-product-range-filter__field {
+label.wc-product-range-filter__field + label.wc-product-range-filter__field {
 	margin-top: 12px;
 }
 
@@ -14,9 +17,11 @@
 	display: block;
 	margin-bottom: 6px;
 	font-weight: 600;
+	line-height: 1.4;
 }
 
 .wc-product-range-filter__input {
+	display: block;
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
