@@ -505,15 +505,23 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				return array();
 			}
 
+			$normalized = $settings;
+
 			if ( ! empty( $settings['settings'] ) && is_array( $settings['settings'] ) ) {
-				$settings = array_merge( $settings, $settings['settings'] );
+				$normalized = array_merge( $settings, $settings['settings'] );
 			}
 
-			if ( empty( $settings['f_range_value_filter'] ) || empty( $settings['f_enable'] ) ) {
+			$is_range_filter = (
+				! empty( $normalized['f_range_value_filter'] )
+				|| ( isset( $normalized['id'] ) && 'wpfRangeValue' === $normalized['id'] )
+				|| ( isset( $settings['id'] ) && 'wpfRangeValue' === $settings['id'] )
+			);
+
+			if ( ! $is_range_filter || empty( $normalized['f_enable'] ) ) {
 				return array();
 			}
 
-			return $settings;
+			return $normalized;
 		}
 	}
 }
