@@ -308,14 +308,12 @@ jQuery(function($) {
 		$('.wc-product-range-filter').each(function() {
 			var $filter = $(this),
 				$container = $filter.parent(),
-				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
+				$firstFilter = $container.children('.wpfFilterWrapper').not($filter).first();
 
-			if (!$buttonBlock.length) {
-				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
-			}
-
-			if ($buttonBlock.length) {
-				$filter.insertBefore($buttonBlock);
+			if ($firstFilter.length) {
+				$filter.insertBefore($firstFilter);
+			} else {
+				$container.prepend($filter);
 			}
 		});
 	}
