@@ -90,7 +90,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_simple_fields() {
-			echo '<div class="options_group wc-product-range-fields show_if_simple">';
+			echo '<div class="options_group wc-product-range-fields show_if_simple hide_if_variable hide_if_grouped hide_if_external">';
 
 			woocommerce_wp_checkbox(
 				array(
@@ -99,7 +99,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 					'description'   => __( 'Show min and max range fields for this simple product.', 'wc-product-range-fields' ),
 					'desc_tip'      => true,
 					'value'         => get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_ENABLED, true ),
-					'wrapper_class' => 'range-toggle-wrapper',
+					'wrapper_class' => 'range-toggle-wrapper show_if_simple hide_if_variable hide_if_grouped hide_if_external',
 				)
 			);
 
@@ -114,6 +114,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 						'step' => 'any',
 					),
 					'value'             => get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_MIN, true ),
+					'wrapper_class'     => 'show_if_simple hide_if_variable hide_if_grouped hide_if_external',
 				)
 			);
 
@@ -126,6 +127,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 						'step' => 'any',
 					),
 					'value'             => get_post_meta( get_the_ID(), WC_Product_Range_Fields::META_MAX, true ),
+					'wrapper_class'     => 'show_if_simple hide_if_variable hide_if_grouped hide_if_external',
 				)
 			);
 
