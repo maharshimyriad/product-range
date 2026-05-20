@@ -30,6 +30,8 @@
 	gap: 6px;
 	font-weight: 600;
 	color: #1d2327;
+	margin-left:10px;
+	margin-top:2px;
 }
 
 .woocommerce_variation .wc-product-range-fields__checkbox .checkbox {
