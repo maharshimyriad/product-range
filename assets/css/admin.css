@@ -158,3 +158,8 @@
 .wpfAttributesPickerItem.wpfDisabled {
 	opacity: 0.5;
 }
+
+
+.woocommerce_options_panel p.form-field.range-toggle-wrapper{
+	padding:5px 10px !important;
+}
