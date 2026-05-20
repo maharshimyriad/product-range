@@ -39,7 +39,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 			add_action( 'woocommerce_product_options_general_product_data', array( $this, 'render_simple_fields' ) );
 			add_action( 'woocommerce_process_product_meta', array( $this, 'save_simple_fields' ) );
-			add_action( 'woocommerce_product_after_variable_attributes', array( $this, 'render_variation_fields' ), 10, 3 );
+			add_action( 'woocommerce_variation_options', array( $this, 'render_variation_fields' ), 5, 3 );
 			add_action( 'woocommerce_save_product_variation', array( $this, 'save_variation_fields' ), 10, 2 );
 		}
 
@@ -90,7 +90,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function render_simple_fields() {
-			echo '<div class="options_group wc-product-range-fields">';
+			echo '<div class="options_group wc-product-range-fields show_if_simple">';
 
 			woocommerce_wp_checkbox(
 				array(
@@ -140,6 +140,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 		 * @return void
 		 */
 		public function save_simple_fields( $product_id ) {
+			$product = wc_get_product( $product_id );
+
+			if ( ! $product || ! $product->is_type( 'simple' ) ) {
+				return;
+			}
+
 			$enabled = isset( $_POST[ WC_Product_Range_Fields::META_ENABLED ] ) ? 'yes' : 'no';
 
 			update_post_meta( $product_id, WC_Product_Range_Fields::META_ENABLED, $enabled );
