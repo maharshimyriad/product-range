@@ -80,19 +80,35 @@ jQuery(function($) {
 		};
 	}
 
-	function moveRangeFiltersBeforeButtons(context) {
+	function positionRangeFilters(context) {
 		$(context).find('.wc-product-range-filter').each(function() {
-			var $filter = $(this),
-				$container = $filter.parent(),
+			var $container = $(this).parent(),
+				$rangeFilters = $container.children('.wc-product-range-filter').sort(function(a, b) {
+					return (parseInt($(a).attr('data-range-order'), 10) || 0) - (parseInt($(b).attr('data-range-order'), 10) || 0);
+				}),
 				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
 
-			if (!$buttonBlock.length) {
-				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
-			}
+			$rangeFilters.each(function() {
+				var $filter = $(this),
+					targetIndex = parseInt($filter.attr('data-range-order'), 10) || 0,
+					$otherWrappers = $container.children('.wpfFilterWrapper').not($filter);
 
-			if ($buttonBlock.length) {
-				$filter.insertBefore($buttonBlock);
-			}
+				if (!$otherWrappers.length || targetIndex <= 0) {
+					$filter.prependTo($container);
+					return;
+				}
+
+				if (targetIndex >= $otherWrappers.length) {
+					if ($buttonBlock.length) {
+						$filter.insertBefore($buttonBlock);
+					} else {
+						$filter.appendTo($container);
+					}
+					return;
+				}
+
+				$filter.insertBefore($otherWrappers.eq(targetIndex));
+			});
 		});
 	}
 
@@ -125,9 +141,9 @@ jQuery(function($) {
 
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
-	moveRangeFiltersBeforeButtons(document);
+	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
 		patchWpfRangeFilter();
-		moveRangeFiltersBeforeButtons(document);
+		positionRangeFilters(document);
 	});
 });
