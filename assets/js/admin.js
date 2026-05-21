@@ -238,7 +238,7 @@ jQuery(function($) {
 	}
 
 	function getSavedFiltersOrder() {
-		var $field = $('#wpfFiltersEditForm').find('[name="filters[order]"]').first(),
+		var $field = $('#wpfFiltersEditForm').find('[name="filters[order]"], [name="settings[filters][order]"], #filtersOrder').first(),
 			value = $field.length ? $.trim($field.val()) : '';
 
 		if (!value.length) {
@@ -275,10 +275,18 @@ jQuery(function($) {
 
 		var savedFilters = getSavedFiltersOrder(),
 			existingUniqIds = getExistingRangeFilterUniqIds(),
-			renderedAny = false;
+			renderedAny = false,
+			$filtersBlock = $('.wpfFiltersBlock').first();
+
+		if (!$filtersBlock.length) {
+			return;
+		}
 
 		$.each(savedFilters, function(index, filter) {
-			var settings;
+			var settings,
+				beforeCount,
+				$rangeFilters,
+				$addedFilter;
 
 			if (!filter || filter.id !== 'wpfRangeValue' || !filter.settings || existingUniqIds[filter.uniqId]) {
 				return;
@@ -288,7 +296,17 @@ jQuery(function($) {
 				f_enable: filter.settings.f_enable || 1
 			});
 
-			window.wpfAdminPage.wpfAddFilter('wpfRangeValue', filter.uniqId || false, settings);
+			beforeCount = $filtersBlock.find('.wpfFilter[data-filter="wpfRangeValue"]').length;
+			window.wpfAdminPage.wpfAddFilter('wpfRangeValue', false, settings);
+			$rangeFilters = $filtersBlock.find('.wpfFilter[data-filter="wpfRangeValue"]');
+			$addedFilter = $rangeFilters.length > beforeCount ? $rangeFilters.eq($rangeFilters.length - 1) : $rangeFilters.last();
+
+			if ($addedFilter.length && filter.uniqId) {
+				$addedFilter.attr('data-uniq-id', filter.uniqId);
+				$addedFilter.find('input[name="uniqId"], input[name="f_uniq_id"]').first().val(filter.uniqId);
+			}
+
+			existingUniqIds[filter.uniqId] = true;
 			renderedAny = true;
 		});
 
