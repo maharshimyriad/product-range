@@ -23,6 +23,54 @@ jQuery(function($) {
 		}).get();
 	}
 
+	function getExpectedOrder($filter) {
+		var raw = $filter.attr('data-range-expected-order') || '';
+
+		if (!raw.length) {
+			return [];
+		}
+
+		try {
+			return JSON.parse(raw);
+		} catch (e) {
+			debugLog('expectedOrderParseFailed', {
+				raw: raw
+			});
+			return [];
+		}
+	}
+
+	function compareExpectedVsRendered($filter) {
+		var $container = $filter.parent(),
+			expectedOrder = getExpectedOrder($filter),
+			renderedOrder = getContainerOrder($container),
+			filterUniqId = $filter.attr('data-uniq-id') || '',
+			expectedIndex = -1,
+			renderedIndex = -1;
+
+		$.each(expectedOrder, function(index, item) {
+			if (item && item.uniqId === filterUniqId) {
+				expectedIndex = index;
+				return false;
+			}
+		});
+
+		$.each(renderedOrder, function(index, item) {
+			if (item && item.uniqId === filterUniqId) {
+				renderedIndex = index;
+				return false;
+			}
+		});
+
+		debugLog('compareExpectedVsRendered', {
+			filterUniqId: filterUniqId,
+			expectedIndex: expectedIndex,
+			renderedIndex: renderedIndex,
+			expectedOrder: expectedOrder,
+			renderedOrder: renderedOrder
+		});
+	}
+
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
@@ -141,6 +189,8 @@ jQuery(function($) {
 				beforeOrder: beforeOrder,
 				afterOrder: getContainerOrder($container)
 			});
+
+			compareExpectedVsRendered($filter);
 		});
 	}
 

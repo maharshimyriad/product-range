@@ -100,14 +100,35 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 */
 		public function append_range_filter_html( $html, $settings, $filter_id ) {
 			$filters = $this->get_saved_range_filters( $settings );
+			$order_map = $this->get_filter_order_map( $settings );
+			$all_filters = $this->get_all_enabled_filters( $settings );
+
 			if ( empty( $filters ) ) {
+				$this->write_debug_log(
+					'append_range_filter_html_skipped',
+					array(
+						'filter_id'                => (int) $filter_id,
+						'reason'                   => 'no_saved_range_filter',
+						'all_enabled_filters'      => $all_filters,
+						'order_map'                => $order_map,
+						'current_frontend_html_snippet' => substr( wp_strip_all_tags( $html ), 0, 500 ),
+					)
+				);
 				return $html;
 			}
 
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
-			$order_map      = $this->get_filter_order_map( $settings );
 			if ( empty( $filter_types ) ) {
+				$this->write_debug_log(
+					'append_range_filter_html_skipped',
+					array(
+						'filter_id'           => (int) $filter_id,
+						'reason'              => 'no_catalog_filter_types',
+						'all_enabled_filters' => $all_filters,
+						'order_map'           => $order_map,
+					)
+				);
 				return $html;
 			}
 
@@ -117,6 +138,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				'append_range_filter_html',
 				array(
 					'filter_id'      => (int) $filter_id,
+					'all_enabled_filters' => $all_filters,
 					'range_filters'  => array_map(
 						static function( $filter ) {
 							return array(
@@ -130,6 +152,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 					'order_map'      => $order_map,
 					'current_values' => $current_values,
 					'filter_types'   => array_keys( $filter_types ),
+					'existing_html_filter_count' => substr_count( $html, 'wpfFilterWrapper' ),
 				)
 			);
 
@@ -156,6 +179,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 						' data-range-order-index="' . esc_attr( $order_index ) . '"' .
 						' data-range-prev-uniq-id="' . esc_attr( $prev_uniq ) . '"' .
 						' data-range-next-uniq-id="' . esc_attr( $next_uniq ) . '"' .
+						' data-range-expected-order="' . esc_attr( wp_json_encode( $all_filters ) ) . '"' .
 						'>';
 
 				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
@@ -569,6 +593,35 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return array
 		 */
 		private function get_filter_order_map( $settings ) {
+			$enabled_filters = $this->get_all_enabled_filters( $settings );
+			if ( empty( $enabled_filters ) ) {
+				return array();
+			}
+
+			$order_map = array();
+			$max_index = count( $enabled_filters ) - 1;
+
+			foreach ( $enabled_filters as $index => $filter ) {
+				$uniq_id = (string) $filter['uniqId'];
+
+				$order_map[ $uniq_id ] = array(
+					'index' => $index,
+					'prev'  => $index > 0 ? (string) $enabled_filters[ $index - 1 ]['uniqId'] : '',
+					'next'  => $index < $max_index ? (string) $enabled_filters[ $index + 1 ]['uniqId'] : '',
+					'id'    => isset( $filter['id'] ) ? (string) $filter['id'] : '',
+				);
+			}
+
+			return $order_map;
+		}
+
+		/**
+		 * Return all enabled WBW filters in saved order.
+		 *
+		 * @param array $settings WBW settings array.
+		 * @return array
+		 */
+		private function get_all_enabled_filters( $settings ) {
 			if ( empty( $settings['filters']['order'] ) ) {
 				return array();
 			}
@@ -587,21 +640,18 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				)
 			);
 
-			$order_map = array();
-			$max_index = count( $enabled_filters ) - 1;
-
-			foreach ( $enabled_filters as $index => $filter ) {
-				$uniq_id = (string) $filter['uniqId'];
-
-				$order_map[ $uniq_id ] = array(
-					'index' => $index,
-					'prev'  => $index > 0 ? (string) $enabled_filters[ $index - 1 ]['uniqId'] : '',
-					'next'  => $index < $max_index ? (string) $enabled_filters[ $index + 1 ]['uniqId'] : '',
-					'id'    => isset( $filter['id'] ) ? (string) $filter['id'] : '',
-				);
-			}
-
-			return $order_map;
+			return array_values(
+				array_map(
+					static function( $filter ) {
+						return array(
+							'uniqId' => isset( $filter['uniqId'] ) ? (string) $filter['uniqId'] : '',
+							'id'     => isset( $filter['id'] ) ? (string) $filter['id'] : '',
+							'title'  => isset( $filter['settings']['f_title'] ) ? (string) $filter['settings']['f_title'] : '',
+						);
+					},
+					$enabled_filters
+				)
+			);
 		}
 
 		/**
