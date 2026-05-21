@@ -564,5 +564,31 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			return $order_map;
 		}
 
+		/**
+		 * Return all enabled WBW filters in saved order.
+		 *
+		 * @param array $settings WBW settings array.
+		 * @return array
+		 */
+		private function get_all_enabled_filters( $settings ) {
+			if ( empty( $settings['filters']['order'] ) ) {
+				return array();
+			}
+
+			$filters = json_decode( $settings['filters']['order'], true );
+			if ( ! is_array( $filters ) ) {
+				return array();
+			}
+
+			return array_values(
+				array_filter(
+					$filters,
+					static function( $filter ) {
+						return ! empty( $filter['uniqId'] ) && ! empty( $filter['settings']['f_enable'] );
+					}
+				)
+			);
+		}
+
 	}
 }
