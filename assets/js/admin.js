@@ -2,103 +2,6 @@ jQuery(function($) {
 	var attributePickerInitAttempts = 0,
 		maxAttributePickerInitAttempts = 20;
 
-	function isAdminDebugEnabled() {
-		return !!(window.console && typeof window.console.log === 'function');
-	}
-
-	function adminDebugLog(message, payload) {
-		if (!isAdminDebugEnabled()) {
-			return;
-		}
-
-		window.console.log('[WC Product Range Admin]', message, payload || {});
-	}
-
-	function parseRequestData(data) {
-		var parsed = {};
-
-		if (typeof data !== 'string' || !data.length) {
-			return parsed;
-		}
-
-		try {
-			new URLSearchParams(data).forEach(function(value, key) {
-				parsed[key] = value;
-			});
-		} catch (e) {
-			parsed._raw = data;
-		}
-
-		return parsed;
-	}
-
-	function collectAdminFilterOrder() {
-		return $('.wpfFiltersBlock .wpfFilter').map(function(index) {
-			var $filter = $(this),
-				$title = $filter.find('input[name="f_title"]').first();
-
-			return {
-				index: index,
-				filter: $filter.attr('data-filter') || '',
-				uniqId: $filter.attr('data-uniq-id') || $filter.find('input[name="uniqId"], input[name="f_uniq_id"]').first().val() || '',
-				title: $title.length ? $title.val() : '',
-				enabled: $filter.find('input[name="f_enable"]').first().val() || ''
-			};
-		}).get();
-	}
-
-	function instrumentFilterAdminRequests() {
-		if (!isFilterEditorReady() || !window.wpfAdminPage || window.wpfAdminPage._wcProductRangeDebugPatched) {
-			return;
-		}
-
-		window.wpfAdminPage._wcProductRangeDebugPatched = true;
-
-		if (typeof window.wpfAdminPage.saveFilters === 'function') {
-			var originalSaveFilters = window.wpfAdminPage.saveFilters;
-
-			window.wpfAdminPage.saveFilters = function() {
-				adminDebugLog('saveFilters called', {
-					domOrder: collectAdminFilterOrder(),
-					formSnapshot: $('#wpfFiltersEditForm').serialize()
-				});
-
-				return originalSaveFilters.apply(this, arguments);
-			};
-		}
-
-		if (typeof window.wpfAdminPage.getPreviewAjax === 'function') {
-			var originalGetPreviewAjax = window.wpfAdminPage.getPreviewAjax;
-
-			window.wpfAdminPage.getPreviewAjax = function() {
-				adminDebugLog('getPreviewAjax called', {
-					domOrder: collectAdminFilterOrder()
-				});
-
-				return originalGetPreviewAjax.apply(this, arguments);
-			};
-		}
-
-		$(document).ajaxSend(function(event, jqXHR, settings) {
-			var data = parseRequestData(settings && settings.data ? settings.data : ''),
-				rawData = settings && settings.data ? String(settings.data) : '',
-				containsFilterOrder = rawData.indexOf('filters%5Border%5D=') !== -1 || rawData.indexOf('filters[order]=') !== -1,
-				looksLikeWpfRequest = rawData.indexOf('woofilters') !== -1 || rawData.indexOf('wpf') !== -1;
-
-			if (!containsFilterOrder && !looksLikeWpfRequest) {
-				return;
-			}
-
-			adminDebugLog('ajaxSend', {
-				url: settings.url || '',
-				type: settings.type || '',
-				orderPayload: data['filters[order]'] || data['filters%5Border%5D'] || '',
-				fullPayload: data,
-				domOrder: collectAdminFilterOrder()
-			});
-		});
-	}
-
 	function toggleRangeFields($scope) {
 		var prefix = wcProductRangeFields.enabledPrefix,
 			$checkbox = $scope.find('input[type="checkbox"][id^="' + prefix + '"]').first(),
@@ -496,7 +399,6 @@ jQuery(function($) {
 	function initAttributePickerWhenReady() {
 		if (isFilterEditorReady()) {
 			initRangeValueFilterAdmin();
-			instrumentFilterAdminRequests();
 			initAttributePicker();
 			movePreviewRangeFiltersBeforeButtons();
 			return;
