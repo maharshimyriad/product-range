@@ -80,6 +80,14 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				WC_Product_Range_Fields::VERSION,
 				true
 			);
+
+			wp_localize_script(
+				'wc-product-range-fields-frontend',
+				'wcProductRangeFrontend',
+				array(
+					'debug' => true,
+				)
+			);
 		}
 
 		/**
@@ -98,11 +106,32 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
+			$order_map      = $this->get_filter_order_map( $settings );
 			if ( empty( $filter_types ) ) {
 				return $html;
 			}
 
 			$is_active = ! empty( $current_values );
+
+			$this->write_debug_log(
+				'append_range_filter_html',
+				array(
+					'filter_id'      => (int) $filter_id,
+					'range_filters'  => array_map(
+						static function( $filter ) {
+							return array(
+								'id'      => isset( $filter['id'] ) ? $filter['id'] : '',
+								'uniq_id' => isset( $filter['uniqId'] ) ? $filter['uniqId'] : '',
+								'title'   => isset( $filter['settings']['f_title'] ) ? $filter['settings']['f_title'] : '',
+							);
+						},
+						$filters
+					),
+					'order_map'      => $order_map,
+					'current_values' => $current_values,
+					'filter_types'   => array_keys( $filter_types ),
+				)
+			);
 
 			foreach ( $filters as $range_filter ) {
 				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
@@ -112,6 +141,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
 				$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
 				$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
+				$order_meta  = isset( $order_map[ $uniq_id ] ) ? $order_map[ $uniq_id ] : array();
+				$order_index = isset( $order_meta['index'] ) ? (string) $order_meta['index'] : '';
+				$prev_uniq   = isset( $order_meta['prev'] ) ? $order_meta['prev'] : '';
+				$next_uniq   = isset( $order_meta['next'] ) ? $order_meta['next'] : '';
 
 				$html .=
 					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
@@ -120,6 +153,9 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
 						' data-query-logic="and"' .
 						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
+						' data-range-order-index="' . esc_attr( $order_index ) . '"' .
+						' data-range-prev-uniq-id="' . esc_attr( $prev_uniq ) . '"' .
+						' data-range-next-uniq-id="' . esc_attr( $next_uniq ) . '"' .
 						'>';
 
 				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
@@ -524,6 +560,79 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 					}
 				)
 			);
+		}
+
+		/**
+		 * Build an order map keyed by WBW uniq ID.
+		 *
+		 * @param array $settings WBW settings array.
+		 * @return array
+		 */
+		private function get_filter_order_map( $settings ) {
+			if ( empty( $settings['filters']['order'] ) ) {
+				return array();
+			}
+
+			$filters = json_decode( $settings['filters']['order'], true );
+			if ( ! is_array( $filters ) ) {
+				return array();
+			}
+
+			$enabled_filters = array_values(
+				array_filter(
+					$filters,
+					static function( $filter ) {
+						return ! empty( $filter['uniqId'] ) && ! empty( $filter['settings']['f_enable'] );
+					}
+				)
+			);
+
+			$order_map = array();
+			$max_index = count( $enabled_filters ) - 1;
+
+			foreach ( $enabled_filters as $index => $filter ) {
+				$uniq_id = (string) $filter['uniqId'];
+
+				$order_map[ $uniq_id ] = array(
+					'index' => $index,
+					'prev'  => $index > 0 ? (string) $enabled_filters[ $index - 1 ]['uniqId'] : '',
+					'next'  => $index < $max_index ? (string) $enabled_filters[ $index + 1 ]['uniqId'] : '',
+					'id'    => isset( $filter['id'] ) ? (string) $filter['id'] : '',
+				);
+			}
+
+			return $order_map;
+		}
+
+		/**
+		 * Write debug output to a plugin-local log file.
+		 *
+		 * @param string $message Log event name.
+		 * @param array  $context Event context.
+		 * @return void
+		 */
+		private function write_debug_log( $message, $context = array() ) {
+			$log_file = plugin_dir_path( $this->plugin_file ) . 'range-filter-debug.log';
+			$payload  = array(
+				'timestamp' => gmdate( 'c' ),
+				'message'   => $message,
+				'context'   => $context,
+			);
+
+			$json = wp_json_encode( $payload );
+			if ( false === $json ) {
+				$json = wp_json_encode(
+					array(
+						'timestamp' => gmdate( 'c' ),
+						'message'   => $message,
+						'context'   => 'Failed to encode debug payload.',
+					)
+				);
+			}
+
+			if ( false !== $json ) {
+				file_put_contents( $log_file, $json . PHP_EOL, FILE_APPEND | LOCK_EX );
+			}
 		}
 	}
 }

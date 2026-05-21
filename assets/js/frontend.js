@@ -1,4 +1,28 @@
 jQuery(function($) {
+	function isDebugEnabled() {
+		return !!(window.wcProductRangeFrontend && window.wcProductRangeFrontend.debug && window.console && typeof window.console.log === 'function');
+	}
+
+	function debugLog(message, payload) {
+		if (!isDebugEnabled()) {
+			return;
+		}
+
+		window.console.log('[WC Product Range]', message, payload || {});
+	}
+
+	function getContainerOrder($container) {
+		return $container.children('.wpfFilterWrapper').map(function() {
+			var $item = $(this);
+
+			return {
+				uniqId: $item.attr('data-uniq-id') || '',
+				filterType: $item.attr('data-filter-type') || '',
+				classes: $item.attr('class') || ''
+			};
+		}).get();
+	}
+
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
@@ -80,19 +104,43 @@ jQuery(function($) {
 		};
 	}
 
-	function moveRangeFiltersBeforeButtons(context) {
+	function positionRangeFilters(context) {
 		$(context).find('.wc-product-range-filter').each(function() {
 			var $filter = $(this),
 				$container = $filter.parent(),
-				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
+				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first(),
+				prevUniqId = $filter.attr('data-range-prev-uniq-id') || '',
+				nextUniqId = $filter.attr('data-range-next-uniq-id') || '',
+				filterUniqId = $filter.attr('data-uniq-id') || '',
+				$prevFilter = prevUniqId ? $container.children('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
+				$nextFilter = nextUniqId ? $container.children('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $(),
+				beforeOrder = getContainerOrder($container),
+				action = 'noop';
 
 			if (!$buttonBlock.length) {
 				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
 			}
 
-			if ($buttonBlock.length) {
+			if ($prevFilter.length && $prevFilter[0] !== $filter[0]) {
+				$filter.insertAfter($prevFilter);
+				action = 'insertAfterPrev';
+			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
+				$filter.insertBefore($nextFilter);
+				action = 'insertBeforeNext';
+			} else if ($buttonBlock.length) {
 				$filter.insertBefore($buttonBlock);
+				action = 'insertBeforeButtons';
 			}
+
+			debugLog('positionRangeFilters', {
+				filterUniqId: filterUniqId,
+				orderIndex: $filter.attr('data-range-order-index') || '',
+				prevUniqId: prevUniqId,
+				nextUniqId: nextUniqId,
+				action: action,
+				beforeOrder: beforeOrder,
+				afterOrder: getContainerOrder($container)
+			});
 		});
 	}
 
@@ -125,9 +173,9 @@ jQuery(function($) {
 
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
-	moveRangeFiltersBeforeButtons(document);
+	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
 		patchWpfRangeFilter();
-		moveRangeFiltersBeforeButtons(document);
+		positionRangeFilters(document);
 	});
 });
