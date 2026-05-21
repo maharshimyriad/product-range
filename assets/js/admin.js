@@ -268,6 +268,35 @@ jQuery(function($) {
 		return uniqIds;
 	}
 
+	function reorderAdminFiltersToSavedOrder() {
+		if (!isFilterEditorReady()) {
+			return;
+		}
+
+		var savedFilters = getSavedFiltersOrder(),
+			$filtersBlock = $('.wpfFiltersBlock').first();
+
+		if (!$filtersBlock.length || !savedFilters.length) {
+			return;
+		}
+
+		$.each(savedFilters, function(index, filter) {
+			var uniqId,
+				$filter;
+
+			if (!filter || !filter.uniqId) {
+				return;
+			}
+
+			uniqId = filter.uniqId;
+			$filter = $filtersBlock.children('.wpfFilter[data-uniq-id="' + uniqId + '"]').first();
+
+			if ($filter.length) {
+				$filtersBlock.append($filter);
+			}
+		});
+	}
+
 	function ensureSavedRangeValueFiltersRendered() {
 		if (!isFilterEditorReady() || !window.wpfAdminPage || typeof window.wpfAdminPage.wpfAddFilter !== 'function') {
 			return;
@@ -314,6 +343,8 @@ jQuery(function($) {
 			$('.wpfFiltersBlock').removeClass('wpfHidden');
 			$('#wpfChooseFilters').trigger('change');
 		}
+
+		reorderAdminFiltersToSavedOrder();
 	}
 
 	function positionPreviewRangeFilters() {
@@ -488,6 +519,7 @@ jQuery(function($) {
 		if (isFilterEditorReady()) {
 			initRangeValueFilterAdmin();
 			initAttributePicker();
+			reorderAdminFiltersToSavedOrder();
 			positionPreviewRangeFilters();
 			return;
 		}
