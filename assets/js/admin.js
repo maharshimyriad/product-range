@@ -234,86 +234,20 @@ jQuery(function($) {
 
 		ensureRangeValueFilterOption();
 		ensureRangeValueFilterTemplate();
-		syncRangeValueFiltersWithSavedOrder();
-	}
-
-	function getSavedFiltersOrder() {
-		var $input = $('input[name="settings[filters][order]"]'),
-			value = $input.val();
-
-		if (!value) {
-			return [];
-		}
-
-		try {
-			value = JSON.parse(value);
-		} catch (e) {
-			return [];
-		}
-
-		return $.isArray(value) ? value : [];
-	}
-
-	function syncRangeValueFiltersWithSavedOrder() {
-		var filters = getSavedFiltersOrder(),
-			$container = $('.wpfFiltersBlock'),
-			addedMissingFilter = false,
-			reordered = false;
-
-		if (!$container.length || !filters.length || !window.wpfAdminPage) {
-			return;
-		}
-
-		$.each(filters, function(index, filter) {
-			var $existing;
-
-			if (!filter || filter.id !== 'wpfRangeValue' || !filter.uniqId || !filter.settings || !filter.settings.f_enable) {
-				return;
-			}
-
-			$existing = $container.children('.wpfFilter[data-uniq-id="' + filter.uniqId + '"]');
-			if ($existing.length) {
-				return;
-			}
-
-			window.wpfAdminPage.wpfAddFilter(filter.id, filter.uniqId, filter.settings);
-			addedMissingFilter = true;
-		});
-
-		$.each(filters, function(index, filter) {
-			var $filter;
-
-			if (!filter || !filter.uniqId) {
-				return;
-			}
-
-			$filter = $container.children('.wpfFilter[data-uniq-id="' + filter.uniqId + '"]');
-			if (!$filter.length) {
-				return;
-			}
-
-			if ($filter.index() !== index) {
-				reordered = true;
-			}
-
-			$container.append($filter);
-		});
-
-		if (addedMissingFilter || reordered) {
-			window.wpfAdminPage.saveFilters();
-		}
 	}
 
 	function movePreviewRangeFiltersBeforeButtons() {
 		$('.wc-product-range-filter').each(function() {
 			var $filter = $(this),
 				$container = $filter.parent(),
-				$firstFilter = $container.children('.wpfFilterWrapper').not($filter).first();
+				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
 
-			if ($firstFilter.length) {
-				$filter.insertBefore($firstFilter);
-			} else {
-				$container.prepend($filter);
+			if (!$buttonBlock.length) {
+				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
+			}
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
 			}
 		});
 	}

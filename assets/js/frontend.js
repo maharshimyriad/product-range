@@ -84,12 +84,14 @@ jQuery(function($) {
 		$(context).find('.wc-product-range-filter').each(function() {
 			var $filter = $(this),
 				$container = $filter.parent(),
-				$firstFilter = $container.children('.wpfFilterWrapper').not($filter).first();
+				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first();
 
-			if ($firstFilter.length) {
-				$filter.insertBefore($firstFilter);
-			} else {
-				$container.prepend($filter);
+			if (!$buttonBlock.length) {
+				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
+			}
+
+			if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
 			}
 		});
 	}

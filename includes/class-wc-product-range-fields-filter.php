@@ -104,156 +104,39 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$is_active = ! empty( $current_values );
 
-			return $this->merge_range_filters_by_order( $html, $settings, $filter_id, $filters, $filter_types, $current_values, $is_active );
-		}
+			foreach ( $filters as $range_filter ) {
+				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
+				$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
+				$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
+				$show_title  = ! empty( $range_filter['settings']['f_enable_title'] ) ? $range_filter['settings']['f_enable_title'] : 'yes_open';
+				$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
+				$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
+				$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
 
-		/**
-		 * Merge custom filter HTML into the saved WBW order.
-		 *
-		 * @param string $html Existing filter HTML.
-		 * @param array  $settings WBW settings array.
-		 * @param int    $filter_id WBW filter ID.
-		 * @param array  $range_filters Custom range filters from saved order.
-		 * @param array  $filter_types Available range types.
-		 * @param array  $current_values Current request values.
-		 * @param bool   $is_active Whether any current value is active.
-		 * @return string
-		 */
-		private function merge_range_filters_by_order( $html, $settings, $filter_id, $range_filters, $filter_types, $current_values, $is_active ) {
-			if ( empty( $settings['filters']['order'] ) || ! class_exists( 'DOMDocument' ) ) {
-				return $html . $this->render_range_filters_html( $range_filters, $filter_id, $filter_types, $current_values, $is_active );
-			}
+				$html .=
+					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
+						' data-filter-type="wpfSearchNumber"' .
+						' data-display-type="text"' .
+						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
+						' data-query-logic="and"' .
+						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
+						'>';
 
-			$order = json_decode( $settings['filters']['order'], true );
-			if ( ! is_array( $order ) ) {
-				return $html . $this->render_range_filters_html( $range_filters, $filter_id, $filter_types, $current_values, $is_active );
-			}
-
-			$dom = new DOMDocument();
-			libxml_use_internal_errors( true );
-			$dom->loadHTML(
-				'<?xml encoding="utf-8" ?><div id="wpf-range-root">' . $html . '</div>',
-				LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
-			);
-			libxml_clear_errors();
-
-			$root = $dom->getElementById( 'wpf-range-root' );
-			if ( ! $root ) {
-				return $html . $this->render_range_filters_html( $range_filters, $filter_id, $filter_types, $current_values, $is_active );
-			}
-
-			$existing_filter_nodes = array();
-			$remaining_nodes       = array();
-
-			foreach ( iterator_to_array( $root->childNodes ) as $child ) {
-				if ( XML_ELEMENT_NODE === $child->nodeType && $child->hasAttribute( 'data-uniq-id' ) ) {
-					$existing_filter_nodes[ $child->getAttribute( 'data-uniq-id' ) ] = $dom->saveHTML( $child );
-					continue;
+				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
+					$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
+					$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
 				}
 
-				$remaining_nodes[] = $dom->saveHTML( $child );
-			}
-
-			$range_html_by_uniq = array();
-			foreach ( $range_filters as $range_filter ) {
-				$uniq_id                      = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
-				$range_html_by_uniq[ $uniq_id ] = $this->render_single_range_filter_html( $range_filter, $filter_id, $filter_types, $current_values, $is_active );
-			}
-
-			$ordered_html = '';
-
-			foreach ( $order as $saved_filter ) {
-				if ( empty( $saved_filter['uniqId'] ) ) {
-					continue;
+				if ( '' !== $description ) {
+					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
 				}
 
-				$uniq_id = $saved_filter['uniqId'];
-
-				if ( isset( $range_html_by_uniq[ $uniq_id ] ) ) {
-					$ordered_html .= $range_html_by_uniq[ $uniq_id ];
-					unset( $range_html_by_uniq[ $uniq_id ] );
-					continue;
-				}
-
-				if ( isset( $existing_filter_nodes[ $uniq_id ] ) ) {
-					$ordered_html .= $existing_filter_nodes[ $uniq_id ];
-					unset( $existing_filter_nodes[ $uniq_id ] );
-				}
+				$html .=
+						'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
+							$this->get_range_inputs_html( $filter_types, $current_values, $title ) .
+						'</div>' .
+					'</div>';
 			}
-
-			if ( ! empty( $existing_filter_nodes ) ) {
-				$ordered_html .= implode( '', $existing_filter_nodes );
-			}
-
-			if ( ! empty( $range_html_by_uniq ) ) {
-				$ordered_html .= implode( '', $range_html_by_uniq );
-			}
-
-			return $ordered_html . implode( '', $remaining_nodes );
-		}
-
-		/**
-		 * Render all saved custom range filters.
-		 *
-		 * @param array $range_filters Custom range filters.
-		 * @param int   $filter_id WBW filter ID.
-		 * @param array $filter_types Available range types.
-		 * @param array $current_values Current request values.
-		 * @param bool  $is_active Whether any current value is active.
-		 * @return string
-		 */
-		private function render_range_filters_html( $range_filters, $filter_id, $filter_types, $current_values, $is_active ) {
-			$html = '';
-
-			foreach ( $range_filters as $range_filter ) {
-				$html .= $this->render_single_range_filter_html( $range_filter, $filter_id, $filter_types, $current_values, $is_active );
-			}
-
-			return $html;
-		}
-
-		/**
-		 * Render one custom range filter block.
-		 *
-		 * @param array $range_filter Saved range filter settings.
-		 * @param int   $filter_id WBW filter ID.
-		 * @param array $filter_types Available range types.
-		 * @param array $current_values Current request values.
-		 * @param bool  $is_active Whether any current value is active.
-		 * @return string
-		 */
-		private function render_single_range_filter_html( $range_filter, $filter_id, $filter_types, $current_values, $is_active ) {
-			$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
-			$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
-			$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
-			$show_title  = ! empty( $range_filter['settings']['f_enable_title'] ) ? $range_filter['settings']['f_enable_title'] : 'yes_open';
-			$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
-			$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
-			$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
-
-			$html =
-				'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
-					' data-filter-type="wpfSearchNumber"' .
-					' data-display-type="text"' .
-					' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
-					' data-query-logic="and"' .
-					' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
-					'>';
-
-			if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
-				$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
-				$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
-			}
-
-			if ( '' !== $description ) {
-				$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
-			}
-
-			$html .=
-					'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
-						$this->get_range_inputs_html( $filter_types, $current_values, $title ) .
-					'</div>' .
-				'</div>';
 
 			return $html;
 		}
