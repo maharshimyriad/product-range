@@ -387,11 +387,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Admin' ) ) {
 
 			if ( empty( $rows ) ) {
 				delete_post_meta( $post_id, WC_Product_Range_Fields::META_RANGES );
+				delete_post_meta( $post_id, WC_Product_Range_Fields::META_MIN );
+				delete_post_meta( $post_id, WC_Product_Range_Fields::META_MAX );
 				return;
 			}
 
 			update_post_meta( $post_id, WC_Product_Range_Fields::META_RANGES, $rows );
-			delete_post_meta( $post_id, WC_Product_Range_Fields::META_ENABLED );
 			delete_post_meta( $post_id, WC_Product_Range_Fields::META_MIN );
 			delete_post_meta( $post_id, WC_Product_Range_Fields::META_MAX );
 		}
