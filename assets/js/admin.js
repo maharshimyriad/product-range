@@ -234,6 +234,68 @@ jQuery(function($) {
 
 		ensureRangeValueFilterOption();
 		ensureRangeValueFilterTemplate();
+		ensureSavedRangeValueFiltersRendered();
+	}
+
+	function getSavedFiltersOrder() {
+		var $field = $('#wpfFiltersEditForm').find('[name="filters[order]"]').first(),
+			value = $field.length ? $.trim($field.val()) : '';
+
+		if (!value.length) {
+			return [];
+		}
+
+		try {
+			var parsed = JSON.parse(value);
+			return $.isArray(parsed) ? parsed : [];
+		} catch (e) {
+			return [];
+		}
+	}
+
+	function getExistingRangeFilterUniqIds() {
+		var uniqIds = {};
+
+		$('.wpfFiltersBlock .wpfFilter[data-filter="wpfRangeValue"]').each(function() {
+			var $filter = $(this),
+				uniqId = $filter.attr('data-uniq-id') || $filter.find('input[name="uniqId"], input[name="f_uniq_id"]').first().val() || '';
+
+			if (uniqId) {
+				uniqIds[uniqId] = true;
+			}
+		});
+
+		return uniqIds;
+	}
+
+	function ensureSavedRangeValueFiltersRendered() {
+		if (!isFilterEditorReady() || !window.wpfAdminPage || typeof window.wpfAdminPage.wpfAddFilter !== 'function') {
+			return;
+		}
+
+		var savedFilters = getSavedFiltersOrder(),
+			existingUniqIds = getExistingRangeFilterUniqIds(),
+			renderedAny = false;
+
+		$.each(savedFilters, function(index, filter) {
+			var settings;
+
+			if (!filter || filter.id !== 'wpfRangeValue' || !filter.settings || existingUniqIds[filter.uniqId]) {
+				return;
+			}
+
+			settings = $.extend({}, filter.settings, {
+				f_enable: filter.settings.f_enable || 1
+			});
+
+			window.wpfAdminPage.wpfAddFilter('wpfRangeValue', filter.uniqId || false, settings);
+			renderedAny = true;
+		});
+
+		if (renderedAny) {
+			$('.wpfFiltersBlock').removeClass('wpfHidden');
+			$('#wpfChooseFilters').trigger('change');
+		}
 	}
 
 	function movePreviewRangeFiltersBeforeButtons() {

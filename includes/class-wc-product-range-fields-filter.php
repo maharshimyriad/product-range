@@ -107,11 +107,16 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$is_active = ! empty( $current_values );
 
 			foreach ( $filters as $range_filter ) {
+				if ( ! is_array( $range_filter ) ) {
+					continue;
+				}
+
+				$range_settings = isset( $range_filter['settings'] ) && is_array( $range_filter['settings'] ) ? $range_filter['settings'] : array();
 				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
-				$title       = ! empty( $range_filter['settings']['f_title'] ) ? $range_filter['settings']['f_title'] : __( 'Range value', 'wc-product-range-fields' );
-				$description = ! empty( $range_filter['settings']['f_description'] ) ? $range_filter['settings']['f_description'] : '';
-				$show_title  = ! empty( $range_filter['settings']['f_enable_title'] ) ? $range_filter['settings']['f_enable_title'] : 'yes_open';
-				$show_mobile = ! empty( $range_filter['settings']['f_enable_title_mobile'] ) ? $range_filter['settings']['f_enable_title_mobile'] : $show_title;
+				$title       = ! empty( $range_settings['f_title'] ) ? $range_settings['f_title'] : __( 'Range value', 'wc-product-range-fields' );
+				$description = ! empty( $range_settings['f_description'] ) ? $range_settings['f_description'] : '';
+				$show_title  = ! empty( $range_settings['f_enable_title'] ) ? $range_settings['f_enable_title'] : 'yes_open';
+				$show_mobile = ! empty( $range_settings['f_enable_title_mobile'] ) ? $range_settings['f_enable_title_mobile'] : $show_title;
 				$title_data  = ' data-show-on-mobile="' . esc_attr( $show_mobile ) . '" data-show-on-desctop="' . esc_attr( $show_title ) . '"';
 				$content_css = 'yes_close' === $show_title ? ' wpfBlockAnimated wpfHide' : '';
 				$order_meta  = isset( $order_map[ $uniq_id ] ) ? $order_map[ $uniq_id ] : array();
@@ -527,7 +532,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				array_filter(
 					$filters,
 					static function( $filter ) {
-						return isset( $filter['id'], $filter['settings']['f_range_value_filter'] )
+						return is_array( $filter )
+							&& isset( $filter['id'] )
+							&& isset( $filter['settings'] )
+							&& is_array( $filter['settings'] )
+							&& isset( $filter['settings']['f_range_value_filter'] )
 							&& 'wpfRangeValue' === $filter['id']
 							&& ! empty( $filter['settings']['f_enable'] );
 					}
@@ -551,6 +560,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$max_index = count( $enabled_filters ) - 1;
 
 			foreach ( $enabled_filters as $index => $filter ) {
+				if ( ! is_array( $filter ) || empty( $filter['uniqId'] ) ) {
+					continue;
+				}
+
 				$uniq_id = (string) $filter['uniqId'];
 
 				$order_map[ $uniq_id ] = array(
@@ -584,7 +597,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				array_filter(
 					$filters,
 					static function( $filter ) {
-						return ! empty( $filter['uniqId'] ) && ! empty( $filter['settings']['f_enable'] );
+						return is_array( $filter )
+							&& ! empty( $filter['uniqId'] )
+							&& isset( $filter['settings'] )
+							&& is_array( $filter['settings'] )
+							&& ! empty( $filter['settings']['f_enable'] );
 					}
 				)
 			);
