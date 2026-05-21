@@ -53,6 +53,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 			add_filter( 'wpf_addHtmlAfterFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
 			add_filter( 'wpf_addCustomTaxQueryPro', array( $this, 'capture_range_filter_value' ), 10, 3 );
+			add_filter( 'wpf_addCustomFieldsQueryPro', array( $this, 'add_range_filter_fields_query' ), 10, 3 );
 			add_action( 'pre_get_posts', array( $this, 'apply_range_filter_to_query' ) );
 		}
 
@@ -171,6 +172,41 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			return $tax_query;
+		}
+
+		/**
+		 * Add matching product IDs to WBW fields query args.
+		 *
+		 * @param array  $fields Existing WBW query fields.
+		 * @param array  $data Filter data.
+		 * @param string $mode Request mode.
+		 * @return array
+		 */
+		public function add_range_filter_fields_query( $fields, $data, $mode ) {
+			unset( $mode );
+
+			if ( ! empty( $data[ self::FILTER_PARAM ] ) ) {
+				self::$current_filter_values = $this->sanitize_filter_values( $data[ self::FILTER_PARAM ] );
+			}
+
+			$values = $this->get_current_filter_values();
+			if ( empty( $values ) ) {
+				return $fields;
+			}
+
+			$matching_ids = $this->get_matching_product_ids( $values );
+			if ( empty( $matching_ids ) ) {
+				$fields['post__in'] = array( 0 );
+				return $fields;
+			}
+
+			if ( ! empty( $fields['post__in'] ) && is_array( $fields['post__in'] ) ) {
+				$matching_ids = array_values( array_intersect( array_map( 'intval', $fields['post__in'] ), $matching_ids ) );
+			}
+
+			$fields['post__in'] = empty( $matching_ids ) ? array( 0 ) : $matching_ids;
+
+			return $fields;
 		}
 
 		/**

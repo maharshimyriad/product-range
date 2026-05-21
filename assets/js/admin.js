@@ -1,6 +1,7 @@
 jQuery(function($) {
 	var attributePickerInitAttempts = 0,
-		maxAttributePickerInitAttempts = 20;
+		maxAttributePickerInitAttempts = 20,
+		rangeValuePreviewSyncScheduled = false;
 
 	function toggleRangeFields($scope) {
 		var prefix = wcProductRangeFields.enabledPrefix,
@@ -238,7 +239,7 @@ jQuery(function($) {
 	}
 
 	function getSavedFiltersOrder() {
-		var $field = $('#wpfFiltersEditForm').find('[name="filters[order]"], [name="settings[filters][order]"], #filtersOrder').first(),
+		var $field = $('[name="filters[order]"], [name="settings[filters][order]"], #filtersOrder').first(),
 			value = $field.length ? $.trim($field.val()) : '';
 
 		if (!value.length) {
@@ -268,13 +269,33 @@ jQuery(function($) {
 		return uniqIds;
 	}
 
+	function syncAdminPreviewAfterRangeRestore() {
+		if (rangeValuePreviewSyncScheduled || !window.wpfAdminPage) {
+			return;
+		}
+
+		rangeValuePreviewSyncScheduled = true;
+		window.setTimeout(function() {
+			rangeValuePreviewSyncScheduled = false;
+
+			if (typeof window.wpfAdminPage.saveFilters === 'function') {
+				window.wpfAdminPage.saveFilters();
+			}
+
+			if (typeof window.wpfAdminPage.getPreviewAjax === 'function') {
+				window.wpfAdminPage.getPreviewAjax();
+			}
+		}, 0);
+	}
+
 	function reorderAdminFiltersToSavedOrder() {
 		if (!isFilterEditorReady()) {
 			return;
 		}
 
 		var savedFilters = getSavedFiltersOrder(),
-			$filtersBlock = $('.wpfFiltersBlock').first();
+			$filtersBlock = $('.wpfFiltersBlock').first(),
+			movedAny = false;
 
 		if (!$filtersBlock.length || !savedFilters.length) {
 			return;
@@ -292,9 +313,16 @@ jQuery(function($) {
 			$filter = $filtersBlock.children('.wpfFilter[data-uniq-id="' + uniqId + '"]').first();
 
 			if ($filter.length) {
+				if ($filter[0] !== $filtersBlock.children('.wpfFilter').eq(index)[0]) {
+					movedAny = true;
+				}
 				$filtersBlock.append($filter);
 			}
 		});
+
+		if (movedAny) {
+			syncAdminPreviewAfterRangeRestore();
+		}
 	}
 
 	function ensureSavedRangeValueFiltersRendered() {
@@ -342,6 +370,7 @@ jQuery(function($) {
 		if (renderedAny) {
 			$('.wpfFiltersBlock').removeClass('wpfHidden');
 			$('#wpfChooseFilters').trigger('change');
+			syncAdminPreviewAfterRangeRestore();
 		}
 
 		reorderAdminFiltersToSavedOrder();
