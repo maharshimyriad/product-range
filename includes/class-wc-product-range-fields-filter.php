@@ -283,19 +283,20 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 */
 		public function apply_range_filter_to_query( $query ) {
 			$values = $this->get_current_filter_values();
+			$doing_ajax = function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : ( defined( 'DOING_AJAX' ) && DOING_AJAX );
 			$this->debug(
 				'apply_range_filter_to_query:start',
 				array(
 					'values'      => $values,
 					'is_admin'    => is_admin(),
-					'doing_ajax'  => function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : ( defined( 'DOING_AJAX' ) && DOING_AJAX ),
+					'doing_ajax'  => $doing_ajax,
 					'post_type'   => $query->get( 'post_type' ),
 					'existing_in' => $query->get( 'post__in' ),
 					'request_uri' => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',
 					'request'     => $this->get_request_debug_snapshot(),
 				)
 			);
-			if ( empty( $values ) || ! $this->query_targets_products( $query ) || is_admin() ) {
+			if ( empty( $values ) || ! $this->query_targets_products( $query ) || ( is_admin() && ! $doing_ajax ) ) {
 				$this->debug( 'apply_range_filter_to_query:skipped', array( 'values' => $values ) );
 				return;
 			}
