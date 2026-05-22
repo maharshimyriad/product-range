@@ -24,6 +24,19 @@ jQuery(function($) {
 			$node = $(filterWrapper);
 		}
 
+		if ((!$node || !$node.length) && typeof filterWrapper === 'string') {
+			var $customFilters = $('.wpfFilterWrapper.wc-product-range-filter');
+
+			rangeDebug('resolveFilterWrapper:string-miss', {
+				input: filterWrapper,
+				customFilterCount: $customFilters.length
+			});
+
+			if ($customFilters.length === 1) {
+				$node = $customFilters.first();
+			}
+		}
+
 		if (!$node.length) {
 			return $();
 		}
