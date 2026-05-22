@@ -505,23 +505,62 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return bool
 		 */
 		private function entity_matches_filters( $entity, $values ) {
+			if ( ! $this->is_entity_enabled( $entity ) ) {
+				return false;
+			}
+
 			foreach ( $values as $type => $value ) {
 				$numeric = (float) $value;
+				$bounds  = $this->get_entity_bounds_for_type( $entity, $type );
 
-				if ( 'yes' !== $entity['enabled'] ) {
-					return false;
-				}
-
-				if ( empty( $entity['ranges'][ $type ] ) ) {
-					return false;
-				}
-
-				if ( ! $this->is_value_within_bounds( $numeric, $entity['ranges'][ $type ]['min'], $entity['ranges'][ $type ]['max'] ) ) {
+				if ( empty( $bounds ) || ! $this->is_value_within_bounds( $numeric, $bounds['min'], $bounds['max'] ) ) {
 					return false;
 				}
 			}
 
 			return true;
+		}
+
+		/**
+		 * Resolve bounds for a specific type, with legacy fallback for older data.
+		 *
+		 * @param array  $entity Product or variation range data.
+		 * @param string $type Requested range type.
+		 * @return array
+		 */
+		private function get_entity_bounds_for_type( $entity, $type ) {
+			if ( ! empty( $entity['ranges'][ $type ] ) ) {
+				return $entity['ranges'][ $type ];
+			}
+
+			if ( empty( $entity['ranges'] ) && ( '' !== $entity['legacy_min'] || '' !== $entity['legacy_max'] ) ) {
+				return array(
+					'min' => $entity['legacy_min'],
+					'max' => $entity['legacy_max'],
+				);
+			}
+
+			return array();
+		}
+
+		/**
+		 * Determine whether an entity should participate in range matching.
+		 *
+		 * Older products may not have the explicit enabled flag saved yet.
+		 *
+		 * @param array $entity Product or variation range data.
+		 * @return bool
+		 */
+		private function is_entity_enabled( $entity ) {
+			if ( 'yes' === $entity['enabled'] ) {
+				return true;
+			}
+
+			if ( ! empty( $entity['ranges'] ) ) {
+				return true;
+			}
+
+			return '' !== $entity['legacy_min'] || '' !== $entity['legacy_max'];
 		}
 
 		/**
