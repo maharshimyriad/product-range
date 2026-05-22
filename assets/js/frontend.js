@@ -8,7 +8,21 @@ jQuery(function($) {
 	}
 
 	function resolveFilterWrapper(filterWrapper) {
-		var $node = $(filterWrapper);
+		var $node;
+
+		if (typeof filterWrapper === 'string') {
+			if (filterWrapper.charAt(0) === '.' || filterWrapper.charAt(0) === '#') {
+				$node = $(filterWrapper);
+			} else {
+				$node = $('.wpfFilterWrapper[data-uniq-id="' + filterWrapper + '"]').first();
+
+				if (!$node.length) {
+					$node = $('[data-uniq-id="' + filterWrapper + '"]').first();
+				}
+			}
+		} else {
+			$node = $(filterWrapper);
+		}
 
 		if (!$node.length) {
 			return $();
