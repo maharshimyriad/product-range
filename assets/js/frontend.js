@@ -1,12 +1,4 @@
 jQuery(function($) {
-	function rangeDebug(stage, payload) {
-		if (!window.wcProductRangeDebug || !window.wcProductRangeDebug.enabled || !window.console || typeof window.console.log !== 'function') {
-			return;
-		}
-
-		window.console.log('[wc-product-range-fields]', stage, payload || {});
-	}
-
 	function resolveFilterWrapper(filterWrapper) {
 		var $node;
 
@@ -19,22 +11,13 @@ jQuery(function($) {
 				if (!$node.length) {
 					$node = $('[data-uniq-id="' + filterWrapper + '"]').first();
 				}
+
+				if (!$node.length) {
+					$node = $('.wpfFilterWrapper.wc-product-range-filter').first();
+				}
 			}
 		} else {
 			$node = $(filterWrapper);
-		}
-
-		if ((!$node || !$node.length) && typeof filterWrapper === 'string') {
-			var $customFilters = $('.wpfFilterWrapper.wc-product-range-filter');
-
-			rangeDebug('resolveFilterWrapper:string-miss', {
-				input: filterWrapper,
-				customFilterCount: $customFilters.length
-			});
-
-			if ($customFilters.length === 1) {
-				$node = $customFilters.first();
-			}
 		}
 
 		if (!$node.length) {
@@ -51,26 +34,11 @@ jQuery(function($) {
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
-		rangeDebug('bootstrap', {
-			url: window.location.href,
-			hasWpfFrontendPage: !!wpf,
-			filterCount: $('.wc-product-range-filter').length
-		});
-
 		if (!wpf || wpf._wcProductRangePatched) {
-			rangeDebug('patchWpfRangeFilter:skipped', {
-				hasWpf: !!wpf,
-				alreadyPatched: !!(wpf && wpf._wcProductRangePatched)
-			});
 			return;
 		}
 
 		wpf._wcProductRangePatched = true;
-		rangeDebug('patchWpfRangeFilter:attached', {
-			hasGetFilterParam: typeof wpf.getFilterParam === 'function',
-			hasGetSearchNumberFilterOptions: typeof wpf.getSearchNumberFilterOptions === 'function',
-			hasChangeUrlByFilterParamsPro: typeof wpf.changeUrlByFilterParamsPro === 'function'
-		});
 
 		var originalGetFilterParam = wpf.getFilterParam,
 			originalGetSearchNumberFilterOptions = wpf.getSearchNumberFilterOptions,
@@ -91,21 +59,11 @@ jQuery(function($) {
 					filterData.settings.value = {};
 				}
 
-				rangeDebug('getFilterParam:custom', filterData);
 				return filterData;
 			}
 
 			if (typeof originalGetFilterParam === 'function') {
-				try {
-					return originalGetFilterParam.call(this, $filter.length ? $filter : filterWrapper);
-				} catch (error) {
-					rangeDebug('getFilterParam:fallback-error', {
-						message: error && error.message ? error.message : String(error),
-						hasResolvedWrapper: $filter.length > 0,
-						originalInputType: filterWrapper && filterWrapper.nodeType ? filterWrapper.nodeName : typeof filterWrapper
-					});
-					throw error;
-				}
+				return originalGetFilterParam.call(this, $filter.length ? $filter : filterWrapper);
 			}
 
 			return {};
@@ -144,13 +102,7 @@ jQuery(function($) {
 				values[type] = value;
 			});
 
-			rangeDebug('getSearchNumberFilterOptions:collected', {
-				values: values,
-				uniqId: $filter.attr('data-uniq-id') || ''
-			});
-
 			if ($.isEmptyObject(values)) {
-				rangeDebug('getSearchNumberFilterOptions:empty', {});
 				return optionsArray;
 			}
 
@@ -161,18 +113,10 @@ jQuery(function($) {
 				return item;
 			});
 
-			rangeDebug('getSearchNumberFilterOptions:resolved', optionsArray);
-
 			return optionsArray;
 		};
 
 		wpf.changeUrlByFilterParamsPro = function(filterData, noWooPage, filterWrapper) {
-			rangeDebug('changeUrlByFilterParamsPro:input', {
-				filterId: filterData && filterData.id ? filterData.id : '',
-				filterName: filterData && filterData.name ? filterData.name : '',
-				settings: filterData && filterData.settings ? filterData.settings : {}
-			});
-
 			if (filterData.id === 'wpfSearchNumber' && filterData.name === 'wpf_range_value') {
 				var value = filterData.settings && filterData.settings.value ? filterData.settings.value : {},
 					$wrapper = $(filterWrapper);
@@ -181,11 +125,6 @@ jQuery(function($) {
 					var type = $(input).data('range-type'),
 						paramName = 'wpf_range_value[' + type + ']',
 						paramValue = value[type] ? value[type] : '';
-
-					rangeDebug('changeUrlByFilterParamsPro:param', {
-						paramName: paramName,
-						paramValue: paramValue
-					});
 
 					this.QStringWork(paramName, paramValue, noWooPage, filterWrapper, paramValue ? 'change' : 'remove');
 				}, this));
@@ -238,11 +177,6 @@ jQuery(function($) {
 				});
 
 				$filter.toggleClass('wpfNotActive', !hasValue);
-				rangeDebug('input', {
-					type: $(this).data('range-type') || '',
-					value: $.trim($(this).val()),
-					hasValue: hasValue
-				});
 			});
 
 		$(document)
@@ -250,40 +184,15 @@ jQuery(function($) {
 			.on('keydown.wcProductRangeFilter', '.wc-product-range-filter input', function(e) {
 				if (e.key === 'Enter') {
 					e.preventDefault();
-					rangeDebug('enter', {
-						type: $(this).data('range-type') || '',
-						value: $.trim($(this).val())
-					});
 					$(this).trigger('change');
 				}
 			});
 	}
 
-	function bindAjaxDebug() {
-		$(document)
-			.off('ajaxSend.wcProductRangeFilter')
-			.on('ajaxSend.wcProductRangeFilter', function(event, jqXHR, ajaxOptions) {
-				var data = ajaxOptions && ajaxOptions.data ? ajaxOptions.data : '',
-					url = ajaxOptions && ajaxOptions.url ? ajaxOptions.url : '';
-
-				if (typeof data === 'string' && data.indexOf('wpf_') === -1 && data.indexOf('range') === -1) {
-					return;
-				}
-
-				rangeDebug('ajaxSend', {
-					url: url,
-					type: ajaxOptions && ajaxOptions.type ? ajaxOptions.type : '',
-					data: data
-				});
-			});
-	}
-
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
-	bindAjaxDebug();
 	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
-		rangeDebug('wpfAjaxSuccess', {});
 		patchWpfRangeFilter();
 		positionRangeFilters(document);
 	});

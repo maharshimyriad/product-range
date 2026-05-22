@@ -82,14 +82,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				true
 			);
 
-			wp_localize_script(
-				'wc-product-range-fields-frontend',
-				'wcProductRangeDebug',
-				array(
-					'enabled' => true,
-					'param'   => self::FILTER_PARAM,
-				)
-			);
 		}
 
 		/**
@@ -103,30 +95,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		public function append_range_filter_html( $html, $settings, $filter_id ) {
 			$filters = $this->get_saved_range_filters( $settings );
 			$order_map = $this->get_filter_order_map( $settings );
-			$this->debug(
-				'append_range_filter_html:start',
-				array(
-					'filter_id'      => $filter_id,
-					'filters_found'  => count( $filters ),
-					'request_values' => $this->get_current_filter_values(),
-				)
-			);
-
 			if ( empty( $filters ) ) {
-				$this->debug( 'append_range_filter_html:no_saved_filters', array( 'filter_id' => $filter_id ) );
 				return $html;
 			}
 
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
 			if ( empty( $filter_types ) ) {
-				$this->debug(
-					'append_range_filter_html:no_filter_types',
-					array(
-						'filter_id'      => $filter_id,
-						'request_values' => $current_values,
-					)
-				);
 				return $html;
 			}
 
@@ -178,15 +153,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 					'</div>';
 			}
 
-			$this->debug(
-				'append_range_filter_html:rendered',
-				array(
-					'filter_id'    => $filter_id,
-					'filter_types' => array_keys( $filter_types ),
-					'is_active'    => $is_active,
-				)
-			);
-
 			return $html;
 		}
 
@@ -199,23 +165,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return array
 		 */
 		public function capture_range_filter_value( $tax_query, $data, $mode ) {
-			$this->debug(
-				'capture_range_filter_value:input',
-				array(
-					'mode'       => $mode,
-					'data_keys'  => is_array( $data ) ? array_keys( $data ) : array(),
-					'raw_value'  => is_array( $data ) && isset( $data[ self::FILTER_PARAM ] ) ? $data[ self::FILTER_PARAM ] : null,
-					'get_value'  => isset( $_GET[ self::FILTER_PARAM ] ) ? wp_unslash( $_GET[ self::FILTER_PARAM ] ) : null,
-				)
-			);
-
 			unset( $mode );
 
 			if ( ! empty( $data[ self::FILTER_PARAM ] ) ) {
 				self::$current_filter_values = $this->sanitize_filter_values( $data[ self::FILTER_PARAM ] );
 			}
-
-			$this->debug( 'capture_range_filter_value:resolved', self::$current_filter_values );
 
 			return $tax_query;
 		}
@@ -229,15 +183,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return array
 		 */
 		public function add_range_filter_fields_query( $fields, $data, $mode ) {
-			$this->debug(
-				'add_range_filter_fields_query:start',
-				array(
-					'mode'          => $mode,
-					'raw_value'     => is_array( $data ) && isset( $data[ self::FILTER_PARAM ] ) ? $data[ self::FILTER_PARAM ] : null,
-					'existing_post' => isset( $fields['post__in'] ) ? $fields['post__in'] : null,
-				)
-			);
-
 			unset( $mode );
 
 			if ( ! empty( $data[ self::FILTER_PARAM ] ) ) {
@@ -246,14 +191,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$values = $this->get_current_filter_values();
 			if ( empty( $values ) ) {
-				$this->debug( 'add_range_filter_fields_query:no_values', array() );
 				return $fields;
 			}
 
 			$matching_ids = $this->get_matching_product_ids( $values );
 			if ( empty( $matching_ids ) ) {
 				$fields['post__in'] = array( 0 );
-				$this->debug( 'add_range_filter_fields_query:no_matches', array( 'values' => $values ) );
 				return $fields;
 			}
 
@@ -262,14 +205,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			$fields['post__in'] = empty( $matching_ids ) ? array( 0 ) : $matching_ids;
-			$this->debug(
-				'add_range_filter_fields_query:resolved',
-				array(
-					'values'       => $values,
-					'matching_ids' => $matching_ids,
-					'final_postin' => $fields['post__in'],
-				)
-			);
 
 			return $fields;
 		}
@@ -284,27 +219,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		public function apply_range_filter_to_query( $query ) {
 			$values = $this->get_current_filter_values();
 			$doing_ajax = function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : ( defined( 'DOING_AJAX' ) && DOING_AJAX );
-			$this->debug(
-				'apply_range_filter_to_query:start',
-				array(
-					'values'      => $values,
-					'is_admin'    => is_admin(),
-					'doing_ajax'  => $doing_ajax,
-					'post_type'   => $query->get( 'post_type' ),
-					'existing_in' => $query->get( 'post__in' ),
-					'request_uri' => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',
-					'request'     => $this->get_request_debug_snapshot(),
-				)
-			);
 			if ( empty( $values ) || ! $this->query_targets_products( $query ) || ( is_admin() && ! $doing_ajax ) ) {
-				$this->debug( 'apply_range_filter_to_query:skipped', array( 'values' => $values ) );
 				return;
 			}
 
 			$matching_ids = $this->get_matching_product_ids( $values );
 			if ( empty( $matching_ids ) ) {
 				$query->set( 'post__in', array( 0 ) );
-				$this->debug( 'apply_range_filter_to_query:no_matches', array( 'values' => $values ) );
 				return;
 			}
 
@@ -314,7 +235,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			$query->set( 'post__in', empty( $matching_ids ) ? array( 0 ) : $matching_ids );
-			$this->debug( 'apply_range_filter_to_query:resolved', array( 'post__in' => $query->get( 'post__in' ) ) );
 		}
 
 		/**
@@ -329,17 +249,9 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			if ( isset( $_GET[ self::FILTER_PARAM ] ) ) {
 				self::$current_filter_values = $this->sanitize_filter_values( wp_unslash( $_GET[ self::FILTER_PARAM ] ) );
-				$this->debug(
-					'get_current_filter_values:from_get',
-					array(
-						'raw'       => wp_unslash( $_GET[ self::FILTER_PARAM ] ),
-						'sanitized' => self::$current_filter_values,
-					)
-				);
 				return self::$current_filter_values;
 			}
 
-			$this->debug( 'get_current_filter_values:none', array() );
 			return array();
 		}
 
@@ -471,14 +383,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				}
 			}
 
-			$this->debug(
-				'get_catalog_filter_types:resolved',
-				array(
-					'found_types'     => array_keys( $found_types ),
-					'supported_types' => array_keys( $supported_types ),
-				)
-			);
-
 			return $found_types;
 		}
 
@@ -575,15 +479,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$matched_products = array_values( array_unique( array_filter( array_map( 'intval', $matched_products ) ) ) );
 			sort( $matched_products );
-			$this->debug(
-				'get_matching_product_ids:resolved',
-				array(
-					'values'            => $values,
-					'entity_count'      => count( $entities ),
-					'matched_count'     => count( $matched_products ),
-					'matched_products'  => $matched_products,
-				)
-			);
 
 			return $matched_products;
 		}
@@ -643,72 +538,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			return true;
-		}
-
-		/**
-		 * Decide whether verbose debugging should run.
-		 *
-		 * @return bool
-		 */
-		private function is_debug_enabled() {
-			return true;
-		}
-
-		/**
-		 * Emit structured debug information to the plugin debug log.
-		 *
-		 * @param string $stage Debug stage label.
-		 * @param mixed  $data Stage payload.
-		 * @return void
-		 */
-		private function debug( $stage, $data ) {
-			if ( ! $this->is_debug_enabled() ) {
-				return;
-			}
-
-			if ( is_object( $data ) ) {
-				$data = (array) $data;
-			}
-
-			$json = wp_json_encode( $data );
-			if ( false === $json ) {
-				$json = '"[unserializable]"';
-			}
-
-			$line = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [wc-product-range-fields] ' . $stage . ' ' . $json . PHP_EOL;
-			$file = plugin_dir_path( $this->plugin_file ) . 'wc-product-range-debug.log';
-
-			file_put_contents( $file, $line, FILE_APPEND | LOCK_EX );
-		}
-
-		/**
-		 * Return a compact snapshot of request data for debugging.
-		 *
-		 * @return array
-		 */
-		private function get_request_debug_snapshot() {
-			$keys = array(
-				self::FILTER_PARAM,
-				'page',
-				'action',
-				'module',
-				'handler',
-				'query',
-				'queryVars',
-				'currentUrl',
-				'filters',
-				'filter',
-			);
-
-			$snapshot = array();
-
-			foreach ( $keys as $key ) {
-				if ( isset( $_REQUEST[ $key ] ) ) {
-					$snapshot[ $key ] = wp_unslash( $_REQUEST[ $key ] );
-				}
-			}
-
-			return $snapshot;
 		}
 
 		/**
