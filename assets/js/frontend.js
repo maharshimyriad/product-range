@@ -7,6 +7,20 @@ jQuery(function($) {
 		window.console.log('[wc-product-range-fields]', stage, payload || {});
 	}
 
+	function resolveFilterWrapper(filterWrapper) {
+		var $node = $(filterWrapper);
+
+		if (!$node.length) {
+			return $();
+		}
+
+		if ($node.hasClass('wpfFilterWrapper')) {
+			return $node.first();
+		}
+
+		return $node.closest('.wpfFilterWrapper');
+	}
+
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
@@ -36,7 +50,7 @@ jQuery(function($) {
 			originalChangeUrlByFilterParamsPro = wpf.changeUrlByFilterParamsPro;
 
 		wpf.getFilterParam = function(filterWrapper) {
-			var $filter = $(filterWrapper).closest('.wpfFilterWrapper');
+			var $filter = resolveFilterWrapper(filterWrapper);
 
 			if ($filter.length && $filter.attr('data-get-attribute') === 'wpf_range_value') {
 				var filterData = {
@@ -55,7 +69,16 @@ jQuery(function($) {
 			}
 
 			if (typeof originalGetFilterParam === 'function') {
-				return originalGetFilterParam.call(this, filterWrapper);
+				try {
+					return originalGetFilterParam.call(this, $filter.length ? $filter : filterWrapper);
+				} catch (error) {
+					rangeDebug('getFilterParam:fallback-error', {
+						message: error && error.message ? error.message : String(error),
+						hasResolvedWrapper: $filter.length > 0,
+						originalInputType: filterWrapper && filterWrapper.nodeType ? filterWrapper.nodeName : typeof filterWrapper
+					});
+					throw error;
+				}
 			}
 
 			return {};
