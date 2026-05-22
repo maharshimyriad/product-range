@@ -26,12 +26,40 @@ jQuery(function($) {
 
 		wpf._wcProductRangePatched = true;
 		rangeDebug('patchWpfRangeFilter:attached', {
+			hasGetFilterParam: typeof wpf.getFilterParam === 'function',
 			hasGetSearchNumberFilterOptions: typeof wpf.getSearchNumberFilterOptions === 'function',
 			hasChangeUrlByFilterParamsPro: typeof wpf.changeUrlByFilterParamsPro === 'function'
 		});
 
-		var originalGetSearchNumberFilterOptions = wpf.getSearchNumberFilterOptions,
+		var originalGetFilterParam = wpf.getFilterParam,
+			originalGetSearchNumberFilterOptions = wpf.getSearchNumberFilterOptions,
 			originalChangeUrlByFilterParamsPro = wpf.changeUrlByFilterParamsPro;
+
+		wpf.getFilterParam = function(filterWrapper) {
+			var $filter = $(filterWrapper).closest('.wpfFilterWrapper');
+
+			if ($filter.length && $filter.attr('data-get-attribute') === 'wpf_range_value') {
+				var filterData = {
+					id: 'wpfSearchNumber',
+					slug: 'wpfSearchNumber',
+					name: 'wpf_range_value',
+					settings: this.getSearchNumberFilterOptions($filter).backend || {}
+				};
+
+				if (!filterData.settings.value) {
+					filterData.settings.value = {};
+				}
+
+				rangeDebug('getFilterParam:custom', filterData);
+				return filterData;
+			}
+
+			if (typeof originalGetFilterParam === 'function') {
+				return originalGetFilterParam.call(this, filterWrapper);
+			}
+
+			return {};
+		};
 
 		wpf.getSearchNumberFilterOptions = function($filter) {
 			if ($filter.attr('data-get-attribute') !== 'wpf_range_value') {

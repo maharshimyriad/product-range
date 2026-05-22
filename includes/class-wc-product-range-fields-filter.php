@@ -288,8 +288,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				array(
 					'values'      => $values,
 					'is_admin'    => is_admin(),
+					'doing_ajax'  => function_exists( 'wp_doing_ajax' ) ? wp_doing_ajax() : ( defined( 'DOING_AJAX' ) && DOING_AJAX ),
 					'post_type'   => $query->get( 'post_type' ),
 					'existing_in' => $query->get( 'post__in' ),
+					'request_uri' => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',
+					'request'     => $this->get_request_debug_snapshot(),
 				)
 			);
 			if ( empty( $values ) || ! $this->query_targets_products( $query ) || is_admin() ) {
@@ -675,6 +678,36 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$file = plugin_dir_path( $this->plugin_file ) . 'wc-product-range-debug.log';
 
 			file_put_contents( $file, $line, FILE_APPEND | LOCK_EX );
+		}
+
+		/**
+		 * Return a compact snapshot of request data for debugging.
+		 *
+		 * @return array
+		 */
+		private function get_request_debug_snapshot() {
+			$keys = array(
+				self::FILTER_PARAM,
+				'page',
+				'action',
+				'module',
+				'handler',
+				'query',
+				'queryVars',
+				'currentUrl',
+				'filters',
+				'filter',
+			);
+
+			$snapshot = array();
+
+			foreach ( $keys as $key ) {
+				if ( isset( $_REQUEST[ $key ] ) ) {
+					$snapshot[ $key ] = wp_unslash( $_REQUEST[ $key ] );
+				}
+			}
+
+			return $snapshot;
 		}
 
 		/**
