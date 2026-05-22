@@ -10,6 +10,12 @@ jQuery(function($) {
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
+		rangeDebug('bootstrap', {
+			url: window.location.href,
+			hasWpfFrontendPage: !!wpf,
+			filterCount: $('.wc-product-range-filter').length
+		});
+
 		if (!wpf || wpf._wcProductRangePatched) {
 			rangeDebug('patchWpfRangeFilter:skipped', {
 				hasWpf: !!wpf,

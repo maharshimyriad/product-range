@@ -86,7 +86,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				'wc-product-range-fields-frontend',
 				'wcProductRangeDebug',
 				array(
-					'enabled' => $this->is_debug_enabled(),
+					'enabled' => true,
 					'param'   => self::FILTER_PARAM,
 				)
 			);
@@ -647,15 +647,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 * @return bool
 		 */
 		private function is_debug_enabled() {
-			if ( isset( $_GET['wpf_range_debug'] ) ) {
-				return '1' === (string) wp_unslash( $_GET['wpf_range_debug'] );
-			}
-
-			return defined( 'WP_DEBUG' ) && WP_DEBUG;
+			return true;
 		}
 
 		/**
-		 * Emit structured debug information to the PHP error log.
+		 * Emit structured debug information to the plugin debug log.
 		 *
 		 * @param string $stage Debug stage label.
 		 * @param mixed  $data Stage payload.
@@ -675,7 +671,10 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				$json = '"[unserializable]"';
 			}
 
-			error_log( '[wc-product-range-fields] ' . $stage . ' ' . $json );
+			$line = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [wc-product-range-fields] ' . $stage . ' ' . $json . PHP_EOL;
+			$file = plugin_dir_path( $this->plugin_file ) . 'wc-product-range-debug.log';
+
+			file_put_contents( $file, $line, FILE_APPEND | LOCK_EX );
 		}
 
 		/**
