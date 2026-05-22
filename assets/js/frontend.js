@@ -1,12 +1,28 @@
 jQuery(function($) {
+	function rangeDebug(stage, payload) {
+		if (!window.wcProductRangeDebug || !window.wcProductRangeDebug.enabled || !window.console || typeof window.console.log !== 'function') {
+			return;
+		}
+
+		window.console.log('[wc-product-range-fields]', stage, payload || {});
+	}
+
 	function patchWpfRangeFilter() {
 		var wpf = window.wpfFrontendPage;
 
 		if (!wpf || wpf._wcProductRangePatched) {
+			rangeDebug('patchWpfRangeFilter:skipped', {
+				hasWpf: !!wpf,
+				alreadyPatched: !!(wpf && wpf._wcProductRangePatched)
+			});
 			return;
 		}
 
 		wpf._wcProductRangePatched = true;
+		rangeDebug('patchWpfRangeFilter:attached', {
+			hasGetSearchNumberFilterOptions: typeof wpf.getSearchNumberFilterOptions === 'function',
+			hasChangeUrlByFilterParamsPro: typeof wpf.changeUrlByFilterParamsPro === 'function'
+		});
 
 		var originalGetSearchNumberFilterOptions = wpf.getSearchNumberFilterOptions,
 			originalChangeUrlByFilterParamsPro = wpf.changeUrlByFilterParamsPro;
@@ -44,7 +60,13 @@ jQuery(function($) {
 				values[type] = value;
 			});
 
+			rangeDebug('getSearchNumberFilterOptions:collected', {
+				values: values,
+				uniqId: $filter.attr('data-uniq-id') || ''
+			});
+
 			if ($.isEmptyObject(values)) {
+				rangeDebug('getSearchNumberFilterOptions:empty', {});
 				return optionsArray;
 			}
 
@@ -55,10 +77,18 @@ jQuery(function($) {
 				return item;
 			});
 
+			rangeDebug('getSearchNumberFilterOptions:resolved', optionsArray);
+
 			return optionsArray;
 		};
 
 		wpf.changeUrlByFilterParamsPro = function(filterData, noWooPage, filterWrapper) {
+			rangeDebug('changeUrlByFilterParamsPro:input', {
+				filterId: filterData && filterData.id ? filterData.id : '',
+				filterName: filterData && filterData.name ? filterData.name : '',
+				settings: filterData && filterData.settings ? filterData.settings : {}
+			});
+
 			if (filterData.id === 'wpfSearchNumber' && filterData.name === 'wpf_range_value') {
 				var value = filterData.settings && filterData.settings.value ? filterData.settings.value : {},
 					$wrapper = $(filterWrapper);
@@ -67,6 +97,11 @@ jQuery(function($) {
 					var type = $(input).data('range-type'),
 						paramName = 'wpf_range_value[' + type + ']',
 						paramValue = value[type] ? value[type] : '';
+
+					rangeDebug('changeUrlByFilterParamsPro:param', {
+						paramName: paramName,
+						paramValue: paramValue
+					});
 
 					this.QStringWork(paramName, paramValue, noWooPage, filterWrapper, paramValue ? 'change' : 'remove');
 				}, this));
@@ -119,6 +154,11 @@ jQuery(function($) {
 				});
 
 				$filter.toggleClass('wpfNotActive', !hasValue);
+				rangeDebug('input', {
+					type: $(this).data('range-type') || '',
+					value: $.trim($(this).val()),
+					hasValue: hasValue
+				});
 			});
 
 		$(document)
@@ -126,6 +166,10 @@ jQuery(function($) {
 			.on('keydown.wcProductRangeFilter', '.wc-product-range-filter input', function(e) {
 				if (e.key === 'Enter') {
 					e.preventDefault();
+					rangeDebug('enter', {
+						type: $(this).data('range-type') || '',
+						value: $.trim($(this).val())
+					});
 					$(this).trigger('change');
 				}
 			});
@@ -135,6 +179,7 @@ jQuery(function($) {
 	bindRangeFilterEvents();
 	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
+		rangeDebug('wpfAjaxSuccess', {});
 		patchWpfRangeFilter();
 		positionRangeFilters(document);
 	});
