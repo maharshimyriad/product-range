@@ -259,8 +259,28 @@ jQuery(function($) {
 			});
 	}
 
+	function bindAjaxDebug() {
+		$(document)
+			.off('ajaxSend.wcProductRangeFilter')
+			.on('ajaxSend.wcProductRangeFilter', function(event, jqXHR, ajaxOptions) {
+				var data = ajaxOptions && ajaxOptions.data ? ajaxOptions.data : '',
+					url = ajaxOptions && ajaxOptions.url ? ajaxOptions.url : '';
+
+				if (typeof data === 'string' && data.indexOf('wpf_') === -1 && data.indexOf('range') === -1) {
+					return;
+				}
+
+				rangeDebug('ajaxSend', {
+					url: url,
+					type: ajaxOptions && ajaxOptions.type ? ajaxOptions.type : '',
+					data: data
+				});
+			});
+	}
+
 	patchWpfRangeFilter();
 	bindRangeFilterEvents();
+	bindAjaxDebug();
 	positionRangeFilters(document);
 	$(document).on('wpfAjaxSuccess', function() {
 		rangeDebug('wpfAjaxSuccess', {});

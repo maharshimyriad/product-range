@@ -408,7 +408,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				$value = isset( $current_values[ $type ] ) ? $current_values[ $type ] : '';
 				$html .= '<label class="wc-product-range-filter__field">';
 				$html .= '<span class="wc-product-range-filter__label">' . esc_html( $label ) . '</span>';
-				$html .= '<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input" data-range-type="' . esc_attr( $type ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '" aria-label="' . esc_attr( $title . ' ' . $label ) . '">';
+				$html .= '<input type="number" step="any" inputmode="decimal" class="wc-product-range-filter__input" name="' . esc_attr( self::FILTER_PARAM . '[' . $type . ']' ) . '" data-range-type="' . esc_attr( $type ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr__( 'Enter a value', 'wc-product-range-fields' ) . '" aria-label="' . esc_attr( $title . ' ' . $label ) . '">';
 				$html .= '</label>';
 			}
 
