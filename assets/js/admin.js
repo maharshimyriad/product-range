@@ -1,7 +1,6 @@
 jQuery(function($) {
 	var attributePickerInitAttempts = 0,
-		maxAttributePickerInitAttempts = 20,
-		rangeValuePreviewSyncScheduled = false;
+		maxAttributePickerInitAttempts = 20;
 
 	function toggleRangeFields($scope) {
 		var prefix = wcProductRangeFields.enabledPrefix,
@@ -269,60 +268,32 @@ jQuery(function($) {
 		return uniqIds;
 	}
 
-	function syncAdminPreviewAfterRangeRestore() {
-		if (rangeValuePreviewSyncScheduled || !window.wpfAdminPage) {
-			return;
-		}
-
-		rangeValuePreviewSyncScheduled = true;
-		window.setTimeout(function() {
-			rangeValuePreviewSyncScheduled = false;
-
-			if (typeof window.wpfAdminPage.saveFilters === 'function') {
-				window.wpfAdminPage.saveFilters();
-			}
-
-			if (typeof window.wpfAdminPage.getPreviewAjax === 'function') {
-				window.wpfAdminPage.getPreviewAjax();
-			}
-		}, 0);
-	}
-
 	function reorderAdminFiltersToSavedOrder() {
 		if (!isFilterEditorReady()) {
 			return;
 		}
 
 		var savedFilters = getSavedFiltersOrder(),
-			$filtersBlock = $('.wpfFiltersBlock').first(),
-			movedAny = false;
+			$filtersBlock = $('.wpfFiltersBlock').first();
 
 		if (!$filtersBlock.length || !savedFilters.length) {
 			return;
 		}
 
 		$.each(savedFilters, function(index, filter) {
-			var uniqId,
-				$filter;
+			var uniqId, $filter;
 
 			if (!filter || !filter.uniqId) {
 				return;
 			}
 
-			uniqId = filter.uniqId;
+			uniqId  = filter.uniqId;
 			$filter = $filtersBlock.children('.wpfFilter[data-uniq-id="' + uniqId + '"]').first();
 
 			if ($filter.length) {
-				if ($filter[0] !== $filtersBlock.children('.wpfFilter').eq(index)[0]) {
-					movedAny = true;
-				}
 				$filtersBlock.append($filter);
 			}
 		});
-
-		if (movedAny) {
-			syncAdminPreviewAfterRangeRestore();
-		}
 	}
 
 	function ensureSavedRangeValueFiltersRendered() {
@@ -370,34 +341,14 @@ jQuery(function($) {
 		if (renderedAny) {
 			$('.wpfFiltersBlock').removeClass('wpfHidden');
 			$('#wpfChooseFilters').trigger('change');
-			syncAdminPreviewAfterRangeRestore();
 		}
 
 		reorderAdminFiltersToSavedOrder();
 	}
 
 	function positionPreviewRangeFilters() {
-		$('.wc-product-range-filter').each(function() {
-			var $filter = $(this),
-				$container = $filter.parent(),
-				$buttonBlock = $container.children('.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap').first(),
-				prevUniqId = $filter.attr('data-range-prev-uniq-id') || '',
-				nextUniqId = $filter.attr('data-range-next-uniq-id') || '',
-				$prevFilter = prevUniqId ? $container.children('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
-				$nextFilter = nextUniqId ? $container.children('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
-
-			if (!$buttonBlock.length) {
-				$buttonBlock = $container.find('.wpfFilterButton, .wpfClearButton').first().parent();
-			}
-
-			if ($prevFilter.length && $prevFilter[0] !== $filter[0]) {
-				$filter.insertAfter($prevFilter);
-			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
-				$filter.insertBefore($nextFilter);
-			} else if ($buttonBlock.length) {
-				$filter.insertBefore($buttonBlock);
-			}
-		});
+		// Intentionally empty — the admin preview is managed entirely by WBW.
+		// Moving DOM nodes here caused the filter to disappear after every reload.
 	}
 
 	function getExistingAttributeFilters() {
@@ -564,9 +515,5 @@ jQuery(function($) {
 	initAttributePickerWhenReady();
 	$(document).on('click', '.wpfFiltersBlock .wpfDelete', function() {
 		setTimeout(initAttributePickerWhenReady, 0);
-	});
-	$(document).ajaxComplete(function() {
-		initAttributePickerWhenReady();
-		positionPreviewRangeFilters();
 	});
 });
