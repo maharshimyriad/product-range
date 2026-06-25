@@ -51,7 +51,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 */
 		public function hooks() {
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-			add_filter( 'wpf_addHtmlAfterFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
+			add_filter( 'wpf_addHtmlBeforeFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
 			add_filter( 'wpf_addCustomTaxQueryPro', array( $this, 'capture_range_filter_value' ), 10, 3 );
 			add_filter( 'wpf_addCustomFieldsQueryPro', array( $this, 'add_range_filter_fields_query' ), 10, 3 );
 			add_action( 'pre_get_posts', array( $this, 'apply_range_filter_to_query' ) );
@@ -85,15 +85,19 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		}
 
 		/**
-		 * Append the custom numeric filter to WBW filter output.
+		 * Prepend the custom numeric filter inside the WBW wrapper, before the
+		 * filter list and button bar, so JS can reposition it correctly.
 		 *
-		 * @param string $html Existing filter HTML.
+		 * Uses wpf_addHtmlBeforeFilter (fires right after <div class="wpfMainWrapper">
+		 * opens) instead of wpf_addHtmlAfterFilter (which fires after the button bar).
+		 *
+		 * @param string $html     Existing HTML accumulated so far.
 		 * @param array  $settings Current filter settings.
-		 * @param int    $filter_id WBW filter ID.
+		 * @param string $view_id  WBW view identifier string.
 		 * @return string
 		 */
-		public function append_range_filter_html( $html, $settings, $filter_id ) {
-			$filters = $this->get_saved_range_filters( $settings );
+		public function append_range_filter_html( $html, $settings, $view_id ) {
+			$filters   = $this->get_saved_range_filters( $settings );
 			$order_map = $this->get_filter_order_map( $settings );
 			if ( empty( $filters ) ) {
 				return $html;
@@ -120,7 +124,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				}
 
 				$range_settings = isset( $range_filter['settings'] ) && is_array( $range_filter['settings'] ) ? $range_filter['settings'] : array();
-				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
+				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . sanitize_html_class( $view_id ) : $range_filter['uniqId'];
 				$title       = ! empty( $range_settings['f_title'] ) ? $range_settings['f_title'] : __( 'Range value', 'wc-product-range-fields' );
 				$description = ! empty( $range_settings['f_description'] ) ? $range_settings['f_description'] : '';
 				$show_title  = ! empty( $range_settings['f_enable_title'] ) ? $range_settings['f_enable_title'] : 'yes_open';
@@ -132,32 +136,33 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				$prev_uniq   = isset( $order_meta['prev'] ) ? $order_meta['prev'] : '';
 				$next_uniq   = isset( $order_meta['next'] ) ? $order_meta['next'] : '';
 
-				$html .=
-					'<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"' .
-						' data-filter-type="wpfSearchNumber"' .
-						' data-display-type="text"' .
-						' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"' .
-						' data-query-logic="and"' .
-						' data-uniq-id="' . esc_attr( $uniq_id ) . '"' .
-						' data-range-order-index="' . esc_attr( $order_index ) . '"' .
-						' data-range-prev-uniq-id="' . esc_attr( $prev_uniq ) . '"' .
-						' data-range-next-uniq-id="' . esc_attr( $next_uniq ) . '"' .
-						'>';
+				$block  = '<div class="wpfFilterWrapper wc-product-range-filter' . ( $is_active ? '' : ' wpfNotActive' ) . '"';
+				$block .= ' data-filter-type="wpfSearchNumber"';
+				$block .= ' data-display-type="text"';
+				$block .= ' data-get-attribute="' . esc_attr( self::FILTER_PARAM ) . '"';
+				$block .= ' data-query-logic="and"';
+				$block .= ' data-uniq-id="' . esc_attr( $uniq_id ) . '"';
+				$block .= ' data-range-order-index="' . esc_attr( $order_index ) . '"';
+				$block .= ' data-range-prev-uniq-id="' . esc_attr( $prev_uniq ) . '"';
+				$block .= ' data-range-next-uniq-id="' . esc_attr( $next_uniq ) . '"';
+				$block .= '>';
 
 				if ( 'no' !== $show_title || 'no' !== $show_mobile ) {
 					$icon_class = 'yes_close' === $show_title ? 'fa-plus' : 'fa-minus';
-					$html      .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
+					$block     .= '<div class="wpfFilterTitle"' . $title_data . '><div class="wfpTitle wfpClickable">' . esc_html( $title ) . '</div><i class="fa ' . esc_attr( $icon_class ) . ' wpfTitleToggle"></i></div>';
 				}
 
 				if ( '' !== $description ) {
-					$html .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
+					$block .= '<div class="wfpDescription">' . esc_html( $description ) . '</div>';
 				}
 
-				$html .=
-						'<div class="wpfFilterContent' . esc_attr( $content_css ) . '">' .
-							$this->get_range_inputs_html( $filter_types, $current_values, $title ) .
-						'</div>' .
-					'</div>';
+				$block .= '<div class="wpfFilterContent' . esc_attr( $content_css ) . '">';
+				$block .= $this->get_range_inputs_html( $filter_types, $current_values, $title );
+				$block .= '</div>';
+				$block .= '</div>';
+
+				// Append our block to $html so it sits inside the wrapper.
+				$html .= $block;
 			}
 
 			return $html;
