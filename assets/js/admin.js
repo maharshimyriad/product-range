@@ -347,8 +347,29 @@ jQuery(function($) {
 	}
 
 	function positionPreviewRangeFilters() {
-		// Intentionally empty — the admin preview is managed entirely by WBW.
-		// Moving DOM nodes here caused the filter to disappear after every reload.
+		var $preview = $('.wpfFiltersBlockPreview').first();
+
+		if (!$preview.length) {
+			return;
+		}
+
+		$preview.find('.wc-product-range-filter').each(function() {
+			var $filter     = $(this),
+				// Button bar inside the preview — WBW uses wpfFilterButtons.
+				$buttonBlock = $preview.find('.wpfFilterButtons').first(),
+				prevUniqId   = $filter.attr('data-range-prev-uniq-id') || '',
+				nextUniqId   = $filter.attr('data-range-next-uniq-id') || '',
+				$prevFilter  = prevUniqId ? $preview.find('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
+				$nextFilter  = nextUniqId ? $preview.find('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
+
+			if ($prevFilter.length && $prevFilter[0] !== $filter[0]) {
+				$filter.insertAfter($prevFilter);
+			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
+				$filter.insertBefore($nextFilter);
+			} else if ($buttonBlock.length) {
+				$filter.insertBefore($buttonBlock);
+			}
+		});
 	}
 
 	function getExistingAttributeFilters() {
@@ -515,5 +536,9 @@ jQuery(function($) {
 	initAttributePickerWhenReady();
 	$(document).on('click', '.wpfFiltersBlock .wpfDelete', function() {
 		setTimeout(initAttributePickerWhenReady, 0);
+	});
+	// Reposition after every preview AJAX reload — no saves triggered.
+	$(document).ajaxComplete(function() {
+		positionPreviewRangeFilters();
 	});
 });

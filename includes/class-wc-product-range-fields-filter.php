@@ -51,7 +51,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		 */
 		public function hooks() {
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-			add_filter( 'wpf_addHtmlBeforeFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
+			add_filter( 'wpf_addHtmlAfterFilter', array( $this, 'append_range_filter_html' ), 10, 3 );
 			add_filter( 'wpf_addCustomTaxQueryPro', array( $this, 'capture_range_filter_value' ), 10, 3 );
 			add_filter( 'wpf_addCustomFieldsQueryPro', array( $this, 'add_range_filter_fields_query' ), 10, 3 );
 			add_action( 'pre_get_posts', array( $this, 'apply_range_filter_to_query' ) );
@@ -85,18 +85,18 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		}
 
 		/**
-		 * Prepend the custom numeric filter inside the WBW wrapper, before the
-		 * filter list and button bar, so JS can reposition it correctly.
+		 * Append the custom numeric filter inside the WBW wrapper.
 		 *
-		 * Uses wpf_addHtmlBeforeFilter (fires right after <div class="wpfMainWrapper">
-		 * opens) instead of wpf_addHtmlAfterFilter (which fires after the button bar).
+		 * wpf_addHtmlAfterFilter fires after the bottom button bar but before
+		 * </div>, so the block is inside the container. JS then moves it to
+		 * the correct position (before the button bar).
 		 *
-		 * @param string $html     Existing HTML accumulated so far.
-		 * @param array  $settings Current filter settings.
-		 * @param string $view_id  WBW view identifier string.
+		 * @param string $html      Existing HTML accumulated so far.
+		 * @param array  $settings  Current filter settings.
+		 * @param int    $filter_id WBW filter ID.
 		 * @return string
 		 */
-		public function append_range_filter_html( $html, $settings, $view_id ) {
+		public function append_range_filter_html( $html, $settings, $filter_id ) {
 			$filters   = $this->get_saved_range_filters( $settings );
 			$order_map = $this->get_filter_order_map( $settings );
 			if ( empty( $filters ) ) {
@@ -124,7 +124,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				}
 
 				$range_settings = isset( $range_filter['settings'] ) && is_array( $range_filter['settings'] ) ? $range_filter['settings'] : array();
-				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . sanitize_html_class( $view_id ) : $range_filter['uniqId'];
+				$uniq_id     = empty( $range_filter['uniqId'] ) ? 'wpf-range-value-' . absint( $filter_id ) : $range_filter['uniqId'];
 				$title       = ! empty( $range_settings['f_title'] ) ? $range_settings['f_title'] : __( 'Range value', 'wc-product-range-fields' );
 				$description = ! empty( $range_settings['f_description'] ) ? $range_settings['f_description'] : '';
 				$show_title  = ! empty( $range_settings['f_enable_title'] ) ? $range_settings['f_enable_title'] : 'yes_open';
