@@ -101,6 +101,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
+
+			// Fall back to all supported types so the filter always renders in the
+			// admin preview, even before any products have range meta saved.
+			if ( empty( $filter_types ) ) {
+				$filter_types = WC_Product_Range_Fields::get_range_types();
+			}
+
 			if ( empty( $filter_types ) ) {
 				return $html;
 			}
