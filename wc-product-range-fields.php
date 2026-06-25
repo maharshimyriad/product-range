@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: WC Product Range Fields
  * Description: Adds min range, max range, and a visibility toggle to simple products and each product variation.
