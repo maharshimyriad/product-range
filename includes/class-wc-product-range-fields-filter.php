@@ -106,9 +106,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
 
-			// Fall back to all supported types so the filter always renders in the
-			// admin preview, even before any products have range meta saved.
-			if ( empty( $filter_types ) ) {
+			// In the admin preview there may be no products with range meta yet,
+			// so fall back to all supported types to keep the filter visible while
+			// building the form. On the frontend we respect the catalog check so
+			// the filter is hidden when no matching products exist.
+			if ( empty( $filter_types ) && is_admin() ) {
 				$filter_types = WC_Product_Range_Fields::get_range_types();
 			}
 
@@ -341,7 +343,11 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		}
 
 		/**
-		 * Discover filter types that exist in the catalog.
+		 * Discover which range types exist among products visible in the current context.
+		 *
+		 * On the frontend, scopes the query to products in the current WP_Query
+		 * result set so the filter disappears when no relevant products are shown.
+		 * In the admin (preview), queries the full catalog.
 		 *
 		 * @return array
 		 */
@@ -352,9 +358,25 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$found_types     = array();
 			$meta_key        = WC_Product_Range_Fields::META_RANGES;
 
+			// On the frontend, restrict to IDs in the current main query so the
+			// filter only appears when relevant products are actually being shown.
+			$post_id_clause = '';
+			if ( ! is_admin() ) {
+				$current_ids = $this->get_current_page_product_ids();
+				if ( ! empty( $current_ids ) ) {
+					$id_placeholders = implode( ',', array_fill( 0, count( $current_ids ), '%d' ) );
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$post_id_clause = $wpdb->prepare( " AND post_id IN ($id_placeholders)", $current_ids );
+				} elseif ( null !== $current_ids ) {
+					// Query resolved but returned no products — filter should not show.
+					return array();
+				}
+			}
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$matches = $wpdb->get_col(
 				$wpdb->prepare(
-					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
+					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s" . $post_id_clause,
 					$meta_key
 				)
 			);
@@ -378,17 +400,16 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			if ( empty( $found_types ) ) {
-				$legacy_exists = (bool) $wpdb->get_var(
-					$wpdb->prepare(
-						"
-						SELECT COUNT(1)
-						FROM {$wpdb->postmeta}
-						WHERE meta_key IN (%s, %s)
-						",
-						WC_Product_Range_Fields::META_MIN,
-						WC_Product_Range_Fields::META_MAX
-					)
-				);
+				$legacy_query = "SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s)";
+				$legacy_args  = array( WC_Product_Range_Fields::META_MIN, WC_Product_Range_Fields::META_MAX );
+
+				if ( '' !== $post_id_clause ) {
+					$legacy_query .= $post_id_clause;
+					$legacy_args   = array_merge( $legacy_args, $current_ids );
+				}
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$legacy_exists = (bool) $wpdb->get_var( $wpdb->prepare( $legacy_query, $legacy_args ) );
 
 				if ( $legacy_exists ) {
 					$found_types = $supported_types;
@@ -396,6 +417,40 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			return $found_types;
+		}
+
+		/**
+		 * Return the product IDs in the current main WP_Query result set.
+		 *
+		 * Returns null when we are not in a product-listing context (so the
+		 * caller skips the scoping and queries the full catalog instead).
+		 * Returns an empty array when the query resolved but found no products.
+		 *
+		 * @return int[]|null
+		 */
+		private function get_current_page_product_ids() {
+			global $wp_query;
+
+			if ( ! isset( $wp_query ) || ! $wp_query instanceof WP_Query ) {
+				return null;
+			}
+
+			$post_type = $wp_query->get( 'post_type' );
+			$is_product_query = ( 'product' === $post_type )
+				|| ( is_array( $post_type ) && in_array( 'product', $post_type, true ) )
+				|| $wp_query->is_post_type_archive( 'product' )
+				|| $wp_query->is_tax();
+
+			if ( ! $is_product_query ) {
+				return null;
+			}
+
+			$posts = $wp_query->posts;
+			if ( empty( $posts ) ) {
+				return array();
+			}
+
+			return array_values( array_map( 'intval', wp_list_pluck( $posts, 'ID' ) ) );
 		}
 
 		/**
