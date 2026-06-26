@@ -342,40 +342,56 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		}
 
 		/**
-		 * Discover which range types exist anywhere in the catalog.
+		 * Discover which range types exist among the current page's products.
 		 *
-		 * Shows the filter whenever at least one product has range data saved,
-		 * regardless of the current filtered context. This mirrors how WBW's
-		 * own text/number search filters behave — they are always visible when
-		 * configured, not conditionally hidden per filtered result set.
+		 * On taxonomy/archive pages the query is scoped to $wp_query post IDs so
+		 * the filter only appears when the visible products have range data.
+		 * On other contexts (AJAX, admin preview, single pages) falls back to the
+		 * full catalog so the filter is never incorrectly suppressed.
 		 *
 		 * @return array
 		 */
 		private function get_catalog_filter_types() {
-			global $wpdb;
+			global $wpdb, $wp_query;
 
 			$supported_types = WC_Product_Range_Fields::get_range_types();
-			$found_types     = array();
 			$meta_key        = WC_Product_Range_Fields::META_RANGES;
 
-			$matches = $wpdb->get_col(
-				$wpdb->prepare(
-					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
-					$meta_key
-				)
-			);
+			// Scope to visible product IDs when $wp_query has them and we are on
+			// a real product listing page (not AJAX, not admin UI, not single post).
+			$post_ids = array();
+			if (
+				! wp_doing_ajax()
+				&& ! ( is_admin() && ! wp_doing_ajax() )
+				&& isset( $wp_query )
+				&& $wp_query instanceof WP_Query
+				&& ! empty( $wp_query->posts )
+				&& ( $wp_query->is_tax() || $wp_query->is_post_type_archive() )
+			) {
+				$post_ids = array_map( 'intval', wp_list_pluck( $wp_query->posts, 'ID' ) );
+			}
+
+			// Build WHERE clause.
+			$where = $wpdb->prepare( 'meta_key = %s', $meta_key );
+			if ( ! empty( $post_ids ) ) {
+				$ph     = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$where .= $wpdb->prepare( " AND post_id IN ($ph)", $post_ids );
+			}
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$matches     = $wpdb->get_col( "SELECT meta_value FROM {$wpdb->postmeta} WHERE $where" );
+			$found_types = array();
 
 			foreach ( $matches as $meta_value ) {
 				$rows = maybe_unserialize( $meta_value );
 				if ( ! is_array( $rows ) ) {
 					continue;
 				}
-
 				foreach ( $rows as $row ) {
 					if ( empty( $row['type'] ) ) {
 						continue;
 					}
-
 					$type = sanitize_key( $row['type'] );
 					if ( isset( $supported_types[ $type ] ) ) {
 						$found_types[ $type ] = $supported_types[ $type ];
@@ -383,16 +399,16 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				}
 			}
 
+			// Legacy fallback (_min_range / _max_range).
 			if ( empty( $found_types ) ) {
-				$legacy_exists = (bool) $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s)",
-						WC_Product_Range_Fields::META_MIN,
-						WC_Product_Range_Fields::META_MAX
-					)
-				);
-
-				if ( $legacy_exists ) {
+				$legacy_where = $wpdb->prepare( 'meta_key IN (%s, %s)', WC_Product_Range_Fields::META_MIN, WC_Product_Range_Fields::META_MAX );
+				if ( ! empty( $post_ids ) ) {
+					$ph           = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$legacy_where .= $wpdb->prepare( " AND post_id IN ($ph)", $post_ids );
+				}
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				if ( (bool) $wpdb->get_var( "SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE $legacy_where" ) ) {
 					$found_types = $supported_types;
 				}
 			}
