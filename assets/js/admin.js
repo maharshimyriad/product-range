@@ -354,20 +354,32 @@ jQuery(function($) {
 		}
 
 		$preview.find('.wc-product-range-filter').each(function() {
-			var $filter     = $(this),
-				// Button bar inside the preview — WBW uses wpfFilterButtons.
-				$buttonBlock = $preview.find('.wpfFilterButtons').first(),
+			var $filter      = $(this),
+				// The direct parent is the wpfMainWrapper div, not the preview container.
+				$wrapper     = $filter.closest('.wpfMainWrapper'),
+				$buttonTop   = $wrapper.children('.wpfFilterButtonsTop').first(),
+				$buttonBot   = $wrapper.children('.wpfFilterButtonsBottom').first(),
 				prevUniqId   = $filter.attr('data-range-prev-uniq-id') || '',
 				nextUniqId   = $filter.attr('data-range-next-uniq-id') || '',
-				$prevFilter  = prevUniqId ? $preview.find('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
-				$nextFilter  = nextUniqId ? $preview.find('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
+				$prevFilter  = prevUniqId ? $wrapper.children('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
+				$nextFilter  = nextUniqId ? $wrapper.children('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
 
 			if ($prevFilter.length && $prevFilter[0] !== $filter[0]) {
 				$filter.insertAfter($prevFilter);
 			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
 				$filter.insertBefore($nextFilter);
-			} else if ($buttonBlock.length) {
-				$filter.insertBefore($buttonBlock);
+			} else if ($buttonTop.length) {
+				// Buttons are at the top — place our block just after them.
+				$filter.insertAfter($buttonTop);
+			} else if ($buttonBot.length) {
+				// Buttons are at the bottom — place our block just before them.
+				$filter.insertBefore($buttonBot);
+			} else {
+				// No button bar found — place before the last child.
+				var $last = $wrapper.children().last();
+				if ($last.length && $last[0] !== $filter[0]) {
+					$filter.insertBefore($last);
+				}
 			}
 		});
 	}

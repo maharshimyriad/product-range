@@ -140,45 +140,31 @@ jQuery(function($) {
 
 	function positionRangeFilters(context) {
 		$(context).find('.wc-product-range-filter').each(function() {
-			var $filter    = $(this),
-				$container = $filter.closest('.wpfMainWrapper, .wpfFiltersForm, .wpfWrapper').first();
-
-			// Fall back to direct parent if none of the known wrapper classes matched.
-			if (!$container.length) {
-				$container = $filter.parent();
-			}
-
-			// Find the button bar — try several known WBW class names.
-			var $buttonBlock = $container.find(
-				'.wpfFilterButtons, .wpfButtonsFilterWrap, .wpfFilterButtonWrap, ' +
-				'.wpfFiltersButtons, .wpfFilterButton, .wpfClearButton, ' +
-				'[class*="wpfButton"], [class*="wpfFilter"][class*="Button"]'
-			).first();
-
-			// Walk up one level if we landed on a button element rather than its wrapper.
-			if ($buttonBlock.length && !$buttonBlock.children().length) {
-				$buttonBlock = $buttonBlock.parent();
-			}
-
-			// Use the saved neighbour IDs to place the filter in the right slot.
-			var prevUniqId  = $filter.attr('data-range-prev-uniq-id') || '',
+			var $filter     = $(this),
+				$wrapper    = $filter.closest('.wpfMainWrapper'),
+				$buttonTop  = $wrapper.children('.wpfFilterButtonsTop').first(),
+				$buttonBot  = $wrapper.children('.wpfFilterButtonsBottom').first(),
+				prevUniqId  = $filter.attr('data-range-prev-uniq-id') || '',
 				nextUniqId  = $filter.attr('data-range-next-uniq-id') || '',
-				$prevFilter = prevUniqId ? $container.find('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
-				$nextFilter = nextUniqId ? $container.find('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
+				$prevFilter = prevUniqId ? $wrapper.children('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
+				$nextFilter = nextUniqId ? $wrapper.children('.wpfFilterWrapper[data-uniq-id="' + nextUniqId + '"]').first() : $();
+
+			if (!$wrapper.length) {
+				return;
+			}
 
 			if ($prevFilter.length && $prevFilter[0] !== $filter[0]) {
 				$filter.insertAfter($prevFilter);
 			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
 				$filter.insertBefore($nextFilter);
-			} else if ($buttonBlock.length) {
-				// Place before the button bar — the most common desired position.
-				$filter.insertBefore($buttonBlock);
+			} else if ($buttonTop.length) {
+				$filter.insertAfter($buttonTop);
+			} else if ($buttonBot.length) {
+				$filter.insertBefore($buttonBot);
 			} else {
-				// Last resort: move to just before the last child of the container
-				// so it doesn't end up stranded after everything else.
-				var $lastChild = $container.children().last();
-				if ($lastChild.length && $lastChild[0] !== $filter[0]) {
-					$filter.insertBefore($lastChild);
+				var $last = $wrapper.children().last();
+				if ($last.length && $last[0] !== $filter[0]) {
+					$filter.insertBefore($last);
 				}
 			}
 		});
