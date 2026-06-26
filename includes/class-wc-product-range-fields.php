@@ -95,6 +95,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields' ) ) {
 
 				$filter = new WC_Product_Range_Fields_Filter( $this->plugin_file );
 				$filter->hooks();
+
+				$debug_file = plugin_dir_path( $this->plugin_file ) . 'includes/class-wc-product-range-fields-debug.php';
+				if ( file_exists( $debug_file ) ) {
+					require_once $debug_file;
+					( new WC_Product_Range_Fields_Debug() )->hooks();
+				}
 			}
 		}
 
