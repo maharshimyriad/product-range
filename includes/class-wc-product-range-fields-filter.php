@@ -106,6 +106,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
 
+			// Temporary debug — remove after diagnosis.
+			error_log( '[RangeFilter] is_admin=' . ( is_admin() ? 'yes' : 'no' )
+				. ' doing_ajax=' . ( wp_doing_ajax() ? 'yes' : 'no' )
+				. ' filter_types=' . wp_json_encode( $filter_types )
+				. ' page_ids=' . wp_json_encode( $this->get_current_page_product_ids() )
+			);
+
 			// In the admin preview there may be no products with range meta yet,
 			// so fall back to all supported types to keep the filter visible while
 			// building the form. On the frontend we respect the catalog check so
