@@ -108,9 +108,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 
 			// In the admin preview (not an AJAX call) there may be no products with
 			// range meta yet, so fall back to all supported types to keep the filter
-			// visible while building the form. On the frontend (including WBW's own
-			// filter AJAX) we respect the catalog check so the filter is hidden when
-			// no matching products exist in the current context.
+			// visible while building the form.
 			if ( empty( $filter_types ) && is_admin() && ! wp_doing_ajax() ) {
 				$filter_types = WC_Product_Range_Fields::get_range_types();
 			}
@@ -344,11 +342,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		}
 
 		/**
-		 * Discover which range types exist among products visible in the current context.
+		 * Discover which range types exist anywhere in the catalog.
 		 *
-		 * On the frontend, scopes the query to products in the current WP_Query
-		 * result set so the filter disappears when no relevant products are shown.
-		 * In the admin (preview), queries the full catalog.
+		 * Shows the filter whenever at least one product has range data saved,
+		 * regardless of the current filtered context. This mirrors how WBW's
+		 * own text/number search filters behave — they are always visible when
+		 * configured, not conditionally hidden per filtered result set.
 		 *
 		 * @return array
 		 */
@@ -359,27 +358,9 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$found_types     = array();
 			$meta_key        = WC_Product_Range_Fields::META_RANGES;
 
-			// On the frontend (including WBW's AJAX which runs through admin-ajax.php
-			// so is_admin() is true), restrict to IDs in the current main query so
-			// the filter only appears when relevant products are actually being shown.
-			// Skip scoping only when in the real admin UI (not an AJAX request).
-			$post_id_clause = '';
-			if ( ! is_admin() || wp_doing_ajax() ) {
-				$current_ids = $this->get_current_page_product_ids();
-				if ( ! empty( $current_ids ) ) {
-					$id_placeholders = implode( ',', array_fill( 0, count( $current_ids ), '%d' ) );
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					$post_id_clause = $wpdb->prepare( " AND post_id IN ($id_placeholders)", $current_ids );
-				} elseif ( null !== $current_ids ) {
-					// Query resolved but returned no products — filter should not show.
-					return array();
-				}
-			}
-
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$matches = $wpdb->get_col(
 				$wpdb->prepare(
-					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s" . $post_id_clause,
+					"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
 					$meta_key
 				)
 			);
@@ -403,16 +384,13 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			if ( empty( $found_types ) ) {
-				$legacy_query = "SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s)";
-				$legacy_args  = array( WC_Product_Range_Fields::META_MIN, WC_Product_Range_Fields::META_MAX );
-
-				if ( '' !== $post_id_clause ) {
-					$legacy_query .= $post_id_clause;
-					$legacy_args   = array_merge( $legacy_args, $current_ids );
-				}
-
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				$legacy_exists = (bool) $wpdb->get_var( $wpdb->prepare( $legacy_query, $legacy_args ) );
+				$legacy_exists = (bool) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(1) FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s)",
+						WC_Product_Range_Fields::META_MIN,
+						WC_Product_Range_Fields::META_MAX
+					)
+				);
 
 				if ( $legacy_exists ) {
 					$found_types = $supported_types;
@@ -420,44 +398,6 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			}
 
 			return $found_types;
-		}
-
-		/**
-		 * Return the product IDs in the current main WP_Query result set.
-		 *
-		 * During WBW's AJAX requests $wp_query is not a product-listing query,
-		 * so we return null to signal "no scope restriction" — the caller will
-		 * query the full catalog instead.
-		 *
-		 * Returns an empty array only when a product-listing query resolved with
-		 * zero results (so the filter should be hidden).
-		 *
-		 * @return int[]|null
-		 */
-		private function get_current_page_product_ids() {
-			global $wp_query;
-
-			if ( ! isset( $wp_query ) || ! $wp_query instanceof WP_Query ) {
-				return null;
-			}
-
-			$post_type = $wp_query->get( 'post_type' );
-			$is_product_query = ( 'product' === $post_type )
-				|| ( is_array( $post_type ) && in_array( 'product', $post_type, true ) )
-				|| $wp_query->is_post_type_archive( 'product' )
-				|| $wp_query->is_tax();
-
-			if ( ! $is_product_query ) {
-				// Not a product listing — no scope restriction.
-				return null;
-			}
-
-			$posts = $wp_query->posts;
-			if ( empty( $posts ) ) {
-				return array();
-			}
-
-			return array_values( array_map( 'intval', wp_list_pluck( $posts, 'ID' ) ) );
 		}
 
 		/**
