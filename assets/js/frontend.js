@@ -142,8 +142,8 @@ jQuery(function($) {
 		$(context).find('.wc-product-range-filter').each(function() {
 			var $filter     = $(this),
 				$wrapper    = $filter.closest('.wpfMainWrapper'),
-				$buttonTop  = $wrapper.children('.wpfFilterButtonsTop').first(),
 				$buttonBot  = $wrapper.children('.wpfFilterButtonsBottom').first(),
+				$buttonTop  = $wrapper.children('.wpfFilterButtonsTop').first(),
 				prevUniqId  = $filter.attr('data-range-prev-uniq-id') || '',
 				nextUniqId  = $filter.attr('data-range-next-uniq-id') || '',
 				$prevFilter = prevUniqId ? $wrapper.children('.wpfFilterWrapper[data-uniq-id="' + prevUniqId + '"]').first() : $(),
@@ -157,15 +157,12 @@ jQuery(function($) {
 				$filter.insertAfter($prevFilter);
 			} else if ($nextFilter.length && $nextFilter[0] !== $filter[0]) {
 				$filter.insertBefore($nextFilter);
-			} else if ($buttonTop.length) {
-				$filter.insertAfter($buttonTop);
 			} else if ($buttonBot.length) {
+				// Primary target: before the bottom button bar.
 				$filter.insertBefore($buttonBot);
-			} else {
-				var $last = $wrapper.children().last();
-				if ($last.length && $last[0] !== $filter[0]) {
-					$filter.insertBefore($last);
-				}
+			} else if ($buttonTop.length) {
+				// No bottom bar — place after the top button bar.
+				$filter.insertAfter($buttonTop);
 			}
 		});
 	}
