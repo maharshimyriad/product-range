@@ -106,18 +106,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$current_values = $this->get_current_filter_values();
 			$filter_types   = $this->get_catalog_filter_types();
 
-			// Temporary debug — remove after diagnosis.
-			error_log( '[RangeFilter] is_admin=' . ( is_admin() ? 'yes' : 'no' )
-				. ' doing_ajax=' . ( wp_doing_ajax() ? 'yes' : 'no' )
-				. ' filter_types=' . wp_json_encode( $filter_types )
-				. ' page_ids=' . wp_json_encode( $this->get_current_page_product_ids() )
-			);
-
-			// In the admin preview there may be no products with range meta yet,
-			// so fall back to all supported types to keep the filter visible while
-			// building the form. On the frontend we respect the catalog check so
-			// the filter is hidden when no matching products exist.
-			if ( empty( $filter_types ) && is_admin() ) {
+			// In the admin preview (not an AJAX call) there may be no products with
+			// range meta yet, so fall back to all supported types to keep the filter
+			// visible while building the form. On the frontend (including WBW's own
+			// filter AJAX) we respect the catalog check so the filter is hidden when
+			// no matching products exist in the current context.
+			if ( empty( $filter_types ) && is_admin() && ! wp_doing_ajax() ) {
 				$filter_types = WC_Product_Range_Fields::get_range_types();
 			}
 
@@ -365,10 +359,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 			$found_types     = array();
 			$meta_key        = WC_Product_Range_Fields::META_RANGES;
 
-			// On the frontend, restrict to IDs in the current main query so the
-			// filter only appears when relevant products are actually being shown.
+			// On the frontend (including WBW's AJAX which runs through admin-ajax.php
+			// so is_admin() is true), restrict to IDs in the current main query so
+			// the filter only appears when relevant products are actually being shown.
+			// Skip scoping only when in the real admin UI (not an AJAX request).
 			$post_id_clause = '';
-			if ( ! is_admin() ) {
+			if ( ! is_admin() || wp_doing_ajax() ) {
 				$current_ids = $this->get_current_page_product_ids();
 				if ( ! empty( $current_ids ) ) {
 					$id_placeholders = implode( ',', array_fill( 0, count( $current_ids ), '%d' ) );
@@ -429,9 +425,12 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 		/**
 		 * Return the product IDs in the current main WP_Query result set.
 		 *
-		 * Returns null when we are not in a product-listing context (so the
-		 * caller skips the scoping and queries the full catalog instead).
-		 * Returns an empty array when the query resolved but found no products.
+		 * During WBW's AJAX requests $wp_query is not a product-listing query,
+		 * so we return null to signal "no scope restriction" — the caller will
+		 * query the full catalog instead.
+		 *
+		 * Returns an empty array only when a product-listing query resolved with
+		 * zero results (so the filter should be hidden).
 		 *
 		 * @return int[]|null
 		 */
@@ -449,6 +448,7 @@ if ( ! class_exists( 'WC_Product_Range_Fields_Filter' ) ) {
 				|| $wp_query->is_tax();
 
 			if ( ! $is_product_query ) {
+				// Not a product listing — no scope restriction.
 				return null;
 			}
 
